@@ -202,12 +202,19 @@ from omnix.marketplace.installer import InstallError
 # Import Collaboration module
 from omnix.collab import CollabWSHandler
 
+# Import Video module
+from omnix.video import VideoStreamManager, VideoSource, FrameProcessor
+
 # Marketplace store — session-scoped, seeded on first access
 marketplace_store = MarketplaceStore()
 marketplace_installer = Installer(marketplace_store)
 
 # Collaboration handler — session-scoped
 collab_handler = CollabWSHandler()
+
+# Video stream manager — session-scoped
+video_manager = VideoStreamManager()
+_frame_processor = FrameProcessor()
 
 # WebSocket server (initialized in main() if enabled)
 ws_server = None
@@ -927,6 +934,82 @@ class OmnixHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(content)
             else:
                 self._json_response({"error": "Not found"}, 404)
+
+        # ── Video endpoints ──
+
+        elif parsed.path == "/api/video/sources":
+            sources = video_manager.list_sources()
+            self._json_response({"sources": sources})
+
+        elif parsed.path.startswith("/api/video/stream/"):
+            # MJPEG stream — multipart/x-mixed-replace
+            device_id = parsed.path.split("/api/video/stream/")[1]
+            src = video_manager.get_source(device_id)
+            if not src:
+                # Auto-create simulated source if device exists
+                dev = devices.get(device_id)
+                if dev:
+                    tele_fn = lambda d=dev: d.get_telemetry()
+                    video_manager.add_simulated(device_id, dev.device_type, tele_fn)
+                    video_manager.start(device_id)
+                    src = video_manager.get_source(device_id)
+                else:
+                    self._json_response({"error": "Device not found"}, 404)
+                    return
+
+            if not src._running:
+                video_manager.start(device_id)
+                time.sleep(0.15)  # Let first frame render
+
+            self.send_response(200)
+            self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.send_header("Pragma", "no-cache")
+            cors_middleware.apply_headers(self)
+            self.end_headers()
+
+            try:
+                target_dt = 1.0 / max(1, src.config.target_fps)
+                while True:
+                    frame = src.get_frame()
+                    if frame:
+                        self.wfile.write(b"--frame\r\n")
+                        self.wfile.write(b"Content-Type: image/jpeg\r\n")
+                        self.wfile.write(f"Content-Length: {len(frame)}\r\n".encode())
+                        self.wfile.write(b"\r\n")
+                        self.wfile.write(frame)
+                        self.wfile.write(b"\r\n")
+                        self.wfile.flush()
+                    time.sleep(target_dt)
+            except (BrokenPipeError, ConnectionResetError, OSError):
+                pass  # Client disconnected
+
+        elif parsed.path.startswith("/api/video/snapshot/"):
+            device_id = parsed.path.split("/api/video/snapshot/")[1]
+            src = video_manager.get_source(device_id)
+            if not src:
+                dev = devices.get(device_id)
+                if dev:
+                    tele_fn = lambda d=dev: d.get_telemetry()
+                    video_manager.add_simulated(device_id, dev.device_type, tele_fn)
+                    video_manager.start(device_id)
+                    time.sleep(0.2)
+                    src = video_manager.get_source(device_id)
+                else:
+                    self._json_response({"error": "Device not found"}, 404)
+                    return
+
+            frame = src.get_frame() if src else None
+            if frame:
+                self.send_response(200)
+                self.send_header("Content-Type", "image/jpeg")
+                self.send_header("Content-Length", len(frame))
+                self.send_header("Cache-Control", "no-cache")
+                cors_middleware.apply_headers(self)
+                self.end_headers()
+                self.wfile.write(frame)
+            else:
+                self._json_response({"error": "No frame available"}, 503)
 
         else:
             # Auto-redirect mobile user-agents to mobile PWA from root
@@ -1980,6 +2063,49 @@ class OmnixHandler(SimpleHTTPRequestHandler):
                 except Exception as e:
                     self._json_response({"error": str(e)}, 500)
 
+        # ── Video POST routes ──────────────────────────────
+
+        elif parsed.path.startswith("/api/video/record/"):
+            device_id = parsed.path.split("/api/video/record/")[1]
+            action = data.get("action", "start")
+            if action == "start":
+                ok = video_manager.start_recording(device_id)
+                self._json_response({"ok": ok, "action": "recording_started"})
+            elif action == "stop":
+                frames = video_manager.stop_recording(device_id)
+                # Save frames to a directory
+                if frames:
+                    rec_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                           "..", "recordings", device_id[:8])
+                    os.makedirs(rec_dir, exist_ok=True)
+                    ts = int(time.time())
+                    saved = []
+                    for i, f in enumerate(frames):
+                        fname = f"rec_{ts}_{i:04d}.jpg"
+                        fpath = os.path.join(rec_dir, fname)
+                        with open(fpath, "wb") as fp:
+                            fp.write(f)
+                        saved.append(fname)
+                    self._json_response({
+                        "ok": True, "action": "recording_stopped",
+                        "frame_count": len(frames),
+                        "directory": rec_dir,
+                        "files": saved[:5],  # First 5 as preview
+                    })
+                else:
+                    self._json_response({"ok": False, "error": "No frames recorded"})
+            else:
+                self._json_response({"error": f"Unknown action: {action}"}, 400)
+
+        elif parsed.path.startswith("/api/video/configure/"):
+            device_id = parsed.path.split("/api/video/configure/")[1]
+            ok = video_manager.configure(device_id, **data)
+            if ok:
+                src = video_manager.get_source(device_id)
+                self._json_response({"ok": True, "config": src.info() if src else {}})
+            else:
+                self._json_response({"error": "Video source not found"}, 404)
+
         else:
             self._json_response({"error": "Not found"}, 404)
 
@@ -2084,6 +2210,13 @@ def main():
     add_device(SimulatedRobotArm("Workshop Arm R1"))
     add_device(SimulatedSmartLight("Living Room Light"))
     add_device(SimulatedSmartLight("Desk Lamp"))
+
+    # Initialize video sources for all simulated devices
+    for did, dev in devices.items():
+        tele_fn = (lambda d=dev: d.get_telemetry())
+        video_manager.add_simulated(did, dev.device_type, tele_fn)
+        video_manager.start(did)
+    log.info("video feeds initialized for %d devices", len(devices))
 
     # Initialize movement executor with device registry
     movement_executor = MovementExecutor(devices)

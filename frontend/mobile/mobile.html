@@ -972,6 +972,10 @@ body.light {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12l9-9 9 9"/><path d="M9 21V12h6v9"/></svg>
           <span>Home</span>
         </button>
+        <button class="action-btn" data-action="camera" onclick="mobileToggleCamera()" id="btn-camera">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <span>Camera</span>
+        </button>
         <button class="action-btn estop" data-action="estop" id="btn-estop">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
           <span>E-STOP</span>
@@ -2688,6 +2692,52 @@ window.addEventListener('resize', () => {
     offlineBanner.classList.add('show');
   }
 })();
+
+// ── Mobile Camera Feed ──
+let mobileCameraOpen = false;
+function mobileToggleCamera() {
+  if (mobileCameraOpen) {
+    // Close camera overlay
+    const overlay = document.getElementById('mobile-cam-overlay');
+    if (overlay) overlay.remove();
+    mobileCameraOpen = false;
+    return;
+  }
+  if (!window.selectedDeviceId) {
+    showToast('Select a device first', 'warning');
+    return;
+  }
+  mobileCameraOpen = true;
+  const overlay = document.createElement('div');
+  overlay.id = 'mobile-cam-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:999;background:#000;display:flex;flex-direction:column;';
+  overlay.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(0,0,0,0.8);flex-shrink:0">
+      <span style="color:#fff;font-size:14px;font-weight:600">📹 Live Feed</span>
+      <div style="display:flex;gap:6px">
+        <button onclick="mobileCamSnapshot()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:6px;padding:6px 10px;font-size:16px">📷</button>
+        <button onclick="mobileToggleCamera()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;border-radius:6px;padding:6px 10px;font-size:14px">✕</button>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden">
+      <img src="/api/video/stream/${window.selectedDeviceId}" style="max-width:100%;max-height:100%;object-fit:contain" alt="Camera">
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+function mobileCamSnapshot() {
+  if (!window.selectedDeviceId) return;
+  fetch('/api/video/snapshot/' + window.selectedDeviceId)
+    .then(r => r.blob())
+    .then(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'omnix-snap-' + Date.now() + '.jpg';
+      a.click();
+      URL.revokeObjectURL(url);
+    }).catch(() => showToast('Snapshot failed', 'error'));
+}
 </script>
 </body>
 </html>

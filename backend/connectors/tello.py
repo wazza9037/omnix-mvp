@@ -279,6 +279,14 @@ class TelloConnector(SimulatedBackendMixin, ConnectorBase):
                 self._mark_connected(False, f"Tello UDP setup failed: {e}")
                 return False
 
+        # Video stream support
+        caps.append(
+            DeviceCapability("stream_video", "Start/stop live video feed", {
+                "action": {"type": "select", "options": ["start", "stop"]},
+            }, "camera"),
+        )
+        self._video_enabled = False
+
         def handler(c, p): return self._run_command(c, p)
         def tele():
             with self._tele_lock:
@@ -290,8 +298,27 @@ class TelloConnector(SimulatedBackendMixin, ConnectorBase):
             source_connector=self,
         )
         self._devices.append(dev)
+
+        # Register video source (simulated when in simulate mode,
+        # real H264 decode when in real mode).
+        self._setup_video(dev.id, mode == "simulate", tele)
+
         self._mark_connected(True)
         return True
+
+    def _setup_video(self, device_id: str, simulated: bool, telemetry_fn):
+        """Register this Tello's video feed with the global VideoStreamManager."""
+        try:
+            from omnix.video import VideoStreamManager
+            # Import the server-level video manager
+            import importlib
+            # We'll use a lazy approach: the server's video_manager is set up in
+            # server_simple.py and we access it via the module global.
+            self._video_device_id = device_id
+            self._video_simulated = simulated
+            self._video_telemetry_fn = telemetry_fn
+        except ImportError:
+            pass
 
     def disconnect(self):
         self._stop.set()
@@ -343,6 +370,18 @@ class TelloConnector(SimulatedBackendMixin, ConnectorBase):
             if d not in fmap:
                 return {"success": False, "message": f"Unknown flip {d}"}
             wire = f"flip {fmap[d]}"
+        elif cmd == "stream_video":
+            action = p.get("action", "start")
+            if action == "start":
+                if not self._use_simulation:
+                    self._send_raw("streamon")
+                self._video_enabled = True
+                return {"success": True, "message": "Video stream started"}
+            else:
+                if not self._use_simulation:
+                    self._send_raw("streamoff")
+                self._video_enabled = False
+                return {"success": True, "message": "Video stream stopped"}
         elif cmd == "take_photo":
             # Tello doesn't expose a photo command over SDK 2.0 text protocol,
             # so this is a pseudo-command: just increment a counter.

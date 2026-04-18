@@ -285,6 +285,13 @@ class PiConnector(SimulatedBackendMixin, ConnectorBase):
         caps = [DeviceCapability(name=n, description=d, parameters=p, category=cat)
                 for (n, d, p, cat) in prof["capabilities"]]
 
+        # Add camera capability for all Pi profiles
+        caps.append(DeviceCapability(
+            "stream_video", "Start/stop Pi camera feed", {
+                "action": {"type": "select", "options": ["start", "stop"]},
+            }, "camera",
+        ))
+
         if mode == "simulate":
             self._use_simulation = True
             self._sim = _SimPi(profile)
@@ -316,6 +323,13 @@ class PiConnector(SimulatedBackendMixin, ConnectorBase):
             source_connector=self,
         )
         self._devices.append(dev)
+
+        # Store telemetry function and profile for video integration.
+        # The server will auto-create a simulated video source when
+        # the /api/video/stream/<device_id> endpoint is first hit.
+        self._video_profile = profile
+        self._video_telemetry_fn = tele
+
         self._mark_connected(True)
         return True
 

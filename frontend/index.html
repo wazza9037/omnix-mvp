@@ -1701,6 +1701,66 @@
     font-size: 9px; padding: 2px 6px; border-radius: 3px;
     background: rgba(16,185,129,0.2); color: var(--success); font-weight: 700;
   }
+
+  /* ── Camera / Video Panel ── */
+  .camera-panel {
+    position: absolute; top: 0; right: 0; bottom: 0; left: 0;
+    background: #0a0e14; display: none; z-index: 5;
+    flex-direction: column;
+  }
+  .camera-panel.active { display: flex; }
+  .camera-panel.split {
+    display: flex; left: 50%; border-left: 2px solid var(--card-border);
+  }
+  .camera-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 12px; background: rgba(0,0,0,0.6); z-index: 6;
+    border-bottom: 1px solid var(--card-border); flex-shrink: 0;
+  }
+  .camera-header .cam-title {
+    font-size: 12px; font-weight: 600; color: var(--text);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .camera-header .cam-title .cam-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--success);
+    animation: cam-pulse 1.5s infinite;
+  }
+  @keyframes cam-pulse {
+    0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
+  }
+  .camera-header .cam-controls { display: flex; gap: 4px; }
+  .camera-header .cam-btn {
+    background: rgba(255,255,255,0.08); border: 1px solid var(--card-border);
+    color: var(--text); border-radius: 4px; padding: 3px 8px; cursor: pointer;
+    font-size: 13px; transition: background 0.15s;
+  }
+  .camera-header .cam-btn:hover { background: rgba(255,255,255,0.15); }
+  .camera-header .cam-btn.recording { background: rgba(239,68,68,0.3); border-color: var(--danger); }
+  .camera-feed {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    overflow: hidden; position: relative; min-height: 0;
+  }
+  .camera-feed img {
+    max-width: 100%; max-height: 100%; object-fit: contain;
+  }
+  .camera-feed .no-signal {
+    text-align: center; color: var(--text-muted); font-size: 14px;
+  }
+  .camera-feed .no-signal .big { font-size: 48px; margin-bottom: 10px; }
+  .camera-status {
+    display: flex; align-items: center; gap: 12px;
+    padding: 4px 12px; background: rgba(0,0,0,0.5); font-size: 10px;
+    color: var(--text-muted); flex-shrink: 0;
+    border-top: 1px solid var(--card-border);
+  }
+  .camera-status .fps { color: var(--teal); font-family: monospace; }
+  .cam-toggle-btn {
+    position: absolute; top: 8px; right: 8px; z-index: 10;
+    background: rgba(0,0,0,0.6); border: 1px solid var(--card-border);
+    color: var(--text); border-radius: 4px; padding: 4px 10px;
+    cursor: pointer; font-size: 12px;
+  }
+  .cam-toggle-btn:hover { background: rgba(0,0,0,0.8); }
 </style>
 </head>
 <body>
@@ -1797,6 +1857,43 @@
 
     <!-- Natural language plan preview (slides up when a plan is compiled) -->
     <div class="plan-preview" id="plan-preview" style="display:none"></div>
+
+    <!-- Camera / Video panel (overlays the viewer when active) -->
+    <div class="camera-panel" id="camera-panel">
+      <div class="camera-header">
+        <div class="cam-title">
+          <div class="cam-dot" id="cam-dot"></div>
+          <span id="cam-label">Camera Feed</span>
+        </div>
+        <div class="cam-controls">
+          <button class="cam-btn" onclick="cameraSnapshot()" title="Take snapshot">📷</button>
+          <button class="cam-btn" id="cam-record-btn" onclick="cameraToggleRecord()" title="Record">⏺</button>
+          <button class="cam-btn" onclick="cameraPiP()" title="Picture in Picture">🖼</button>
+          <button class="cam-btn" onclick="cameraFullscreen()" title="Fullscreen">⛶</button>
+          <button class="cam-btn" onclick="cameraToggleSplit()" title="Toggle split/full" id="cam-split-btn">◧</button>
+          <button class="cam-btn" onclick="cameraClose()" title="Close camera">✕</button>
+        </div>
+      </div>
+      <div class="camera-feed" id="camera-feed">
+        <div class="no-signal" id="cam-no-signal">
+          <div class="big">📹</div>
+          <div>No video signal</div>
+          <div style="font-size:11px;margin-top:4px">Select a device and click the camera button to start</div>
+        </div>
+        <img id="cam-stream" style="display:none" alt="Camera feed">
+      </div>
+      <div class="camera-status">
+        <span>FPS: <span class="fps" id="cam-fps">—</span></span>
+        <span id="cam-res">—</span>
+        <span id="cam-source-type">—</span>
+        <span id="cam-rec-indicator" style="color:var(--danger);display:none">● REC</span>
+      </div>
+    </div>
+
+    <!-- Camera toggle button (shown in 3D viewer when camera is available) -->
+    <button class="cam-toggle-btn" id="cam-toggle-btn" onclick="cameraToggle()" style="display:none">
+      📹 Camera
+    </button>
   </div>
 
   <!-- Right contextual panel — changes with active view -->
@@ -7879,6 +7976,219 @@ function btUpdateExecBar() {
     </span>
   `;
 }
+
+// ═══════════════════════════════════════════════════════
+//  Live Camera / Video Feed
+// ═══════════════════════════════════════════════════════
+
+let cameraActive = false;
+let cameraSplit = false;
+let cameraRecording = false;
+let cameraDeviceId = null;
+let cameraFpsTimer = null;
+
+function cameraToggle() {
+  if (cameraActive) {
+    cameraClose();
+  } else {
+    const devId = activeTabId || (selected && selected.id);
+    if (devId) cameraOpen(devId);
+  }
+}
+
+function cameraOpen(deviceId) {
+  cameraDeviceId = deviceId;
+  cameraActive = true;
+  const panel = document.getElementById('camera-panel');
+  const stream = document.getElementById('cam-stream');
+  const noSig = document.getElementById('cam-no-signal');
+  const toggleBtn = document.getElementById('cam-toggle-btn');
+
+  panel.classList.add('active');
+  if (cameraSplit) panel.classList.add('split');
+  noSig.style.display = 'block';
+  stream.style.display = 'none';
+
+  // Set the MJPEG stream source
+  const url = `/api/video/stream/${deviceId}`;
+  stream.onerror = () => {
+    stream.style.display = 'none';
+    noSig.style.display = 'block';
+    document.getElementById('cam-dot').style.background = 'var(--danger)';
+  };
+  stream.onload = () => {
+    noSig.style.display = 'none';
+    stream.style.display = 'block';
+    document.getElementById('cam-dot').style.background = 'var(--success)';
+  };
+  stream.src = url;
+
+  // Update label
+  const dev = simDevices[deviceId];
+  const label = dev ? dev.name : deviceId.slice(0, 8);
+  document.getElementById('cam-label').textContent = `📹 ${label}`;
+  if (toggleBtn) toggleBtn.style.display = 'none';
+
+  // Start FPS polling
+  cameraStartFpsPoll(deviceId);
+}
+
+function cameraClose() {
+  cameraActive = false;
+  cameraSplit = false;
+  cameraDeviceId = null;
+  const panel = document.getElementById('camera-panel');
+  const stream = document.getElementById('cam-stream');
+  const toggleBtn = document.getElementById('cam-toggle-btn');
+
+  panel.classList.remove('active', 'split');
+  stream.src = '';  // Stop the MJPEG stream
+  if (toggleBtn) toggleBtn.style.display = '';
+  if (cameraFpsTimer) { clearInterval(cameraFpsTimer); cameraFpsTimer = null; }
+}
+
+function cameraToggleSplit() {
+  cameraSplit = !cameraSplit;
+  const panel = document.getElementById('camera-panel');
+  if (cameraSplit) {
+    panel.classList.add('split');
+    document.getElementById('cam-split-btn').textContent = '◻';
+  } else {
+    panel.classList.remove('split');
+    document.getElementById('cam-split-btn').textContent = '◧';
+  }
+}
+
+async function cameraSnapshot() {
+  if (!cameraDeviceId) return;
+  try {
+    const resp = await fetch(`/api/video/snapshot/${cameraDeviceId}`);
+    if (!resp.ok) return;
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `omnix-snapshot-${cameraDeviceId.slice(0,8)}-${Date.now()}.jpg`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (e) { console.warn('Snapshot failed:', e); }
+}
+
+async function cameraToggleRecord() {
+  if (!cameraDeviceId) return;
+  const btn = document.getElementById('cam-record-btn');
+  const ind = document.getElementById('cam-rec-indicator');
+  if (!cameraRecording) {
+    const resp = await fetch(`/api/video/record/${cameraDeviceId}`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: 'start'}),
+    });
+    if (resp.ok) {
+      cameraRecording = true;
+      btn.classList.add('recording');
+      btn.textContent = '⏹';
+      ind.style.display = '';
+    }
+  } else {
+    const resp = await fetch(`/api/video/record/${cameraDeviceId}`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: 'stop'}),
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      cameraRecording = false;
+      btn.classList.remove('recording');
+      btn.textContent = '⏺';
+      ind.style.display = 'none';
+      console.log(`Recording saved: ${data.frame_count} frames`);
+    }
+  }
+}
+
+function cameraPiP() {
+  const stream = document.getElementById('cam-stream');
+  if (!stream || !stream.src) return;
+  // Create a temporary video-like element for PiP
+  // Since MJPEG is in an img tag, we open a small popup window
+  const w = window.open('', 'omnix_pip',
+    'width=400,height=300,toolbar=no,menubar=no,scrollbars=no,resizable=yes');
+  if (w) {
+    w.document.write(`
+      <!DOCTYPE html><html><head><title>OMNIX Camera</title>
+      <style>body{margin:0;background:#000;display:flex;align-items:center;justify-content:center;height:100vh}
+      img{max-width:100%;max-height:100%;object-fit:contain}</style></head>
+      <body><img src="${stream.src}" alt="PiP"></body></html>
+    `);
+    w.document.close();
+  }
+}
+
+function cameraFullscreen() {
+  const panel = document.getElementById('camera-panel');
+  if (panel.requestFullscreen) panel.requestFullscreen();
+  else if (panel.webkitRequestFullscreen) panel.webkitRequestFullscreen();
+}
+
+function cameraStartFpsPoll(deviceId) {
+  if (cameraFpsTimer) clearInterval(cameraFpsTimer);
+  cameraFpsTimer = setInterval(async () => {
+    try {
+      const resp = await fetch('/api/video/sources');
+      if (!resp.ok) return;
+      const data = await resp.json();
+      const src = (data.sources || []).find(s => s.device_id === deviceId);
+      if (src) {
+        document.getElementById('cam-fps').textContent = src.fps_actual || '—';
+        document.getElementById('cam-res').textContent = src.resolution || '—';
+        document.getElementById('cam-source-type').textContent = src.source_type || '—';
+      }
+    } catch (e) {}
+  }, 2000);
+}
+
+// Show the camera toggle button when a device is selected in control view
+function updateCameraToggleButton() {
+  const btn = document.getElementById('cam-toggle-btn');
+  if (!btn) return;
+  const devId = activeTabId || (selected && selected.id);
+  if (devId && activeView === 'control' && !cameraActive) {
+    btn.style.display = '';
+  } else if (!cameraActive) {
+    btn.style.display = 'none';
+  }
+}
+
+// Hook into the existing renderAll to show/hide camera button
+const _origRenderAll = typeof renderAll === 'function' ? renderAll : null;
+
+// Patch renderRightPanel to add camera button to control view
+const _origRenderSimPanel = renderSimPanel;
+renderSimPanel = function() {
+  _origRenderSimPanel();
+  // Add camera button to the control panel
+  const rp = document.getElementById('rpanel');
+  if (rp && selected && selected.id) {
+    const camSection = document.createElement('div');
+    camSection.className = 'rpanel-section';
+    camSection.innerHTML = `
+      <div class="section-title">Camera Feed</div>
+      <div class="ctrl-grid">
+        <button class="btn full" onclick="cameraOpen('${selected.id}')" style="border-color:var(--teal);color:var(--teal)">
+          📹 ${cameraActive ? 'Camera Active' : 'Open Camera'}
+        </button>
+        ${cameraActive ? `<button class="btn full" onclick="cameraToggleSplit()">◧ Toggle Split View</button>` : ''}
+      </div>
+    `;
+    // Insert before the Manage section (last section)
+    const sections = rp.querySelectorAll('.rpanel-section');
+    const lastSection = sections[sections.length - 1];
+    if (lastSection) rp.insertBefore(camSection, lastSection);
+    else rp.appendChild(camSection);
+  }
+  updateCameraToggleButton();
+};
 
 // ═══════════════════════════════════════════════════════
 //  Collaboration — Figma-style multiplayer
