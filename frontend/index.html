@@ -1702,6 +1702,136 @@
     background: rgba(16,185,129,0.2); color: var(--success); font-weight: 700;
   }
 
+  /* ═══════════════════════════════════════════════════════
+     SWARM — Multi-Robot Coordination
+     ═══════════════════════════════════════════════════════ */
+  .swarm-overlay {
+    position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,0.75); display: flex; align-items: center; justify-content: center;
+  }
+  .swarm-container {
+    width: 95vw; max-width: 1400px; height: 90vh;
+    background: var(--bg); border: 1px solid var(--card-border);
+    border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;
+  }
+  .swarm-header {
+    padding: 12px 24px; border-bottom: 1px solid var(--card-border);
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--navy);
+  }
+  .swarm-header h2 { font-size: 20px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+  .swarm-close { background: none; border: none; color: var(--text-muted); font-size: 22px; cursor: pointer; }
+  .swarm-close:hover { color: var(--text); }
+  .swarm-body {
+    flex: 1; display: flex; overflow: hidden;
+  }
+  .swarm-sidebar {
+    width: 280px; border-right: 1px solid var(--card-border); overflow-y: auto;
+    padding: 16px; display: flex; flex-direction: column; gap: 12px;
+  }
+  .swarm-main {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .swarm-toolbar {
+    padding: 10px 16px; border-bottom: 1px solid var(--card-border);
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  }
+  .swarm-canvas-area {
+    flex: 1; position: relative; background: #0a0e17;
+  }
+  .swarm-right {
+    width: 300px; border-left: 1px solid var(--card-border); overflow-y: auto; padding: 16px;
+  }
+  /* Group cards */
+  .swarm-group-card {
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: 10px; padding: 12px; cursor: pointer; transition: border-color 0.2s;
+  }
+  .swarm-group-card:hover, .swarm-group-card.active { border-color: var(--teal); }
+  .swarm-group-card h4 { margin: 0 0 4px; font-size: 14px; font-weight: 700; }
+  .swarm-group-card .meta { font-size: 11px; color: var(--text-muted); }
+  /* Member chips */
+  .swarm-member {
+    display: flex; align-items: center; gap: 8px; padding: 6px 8px;
+    background: var(--card-bg); border-radius: 6px; margin-bottom: 4px;
+    border: 1px solid var(--card-border); font-size: 12px;
+  }
+  .swarm-member .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .swarm-member .name { flex: 1; }
+  .swarm-member select {
+    background: var(--bg); border: 1px solid var(--card-border); color: var(--text);
+    font-size: 11px; border-radius: 4px; padding: 2px 4px;
+  }
+  .swarm-member .remove-btn {
+    background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px;
+  }
+  .swarm-member .remove-btn:hover { color: var(--danger); }
+  /* Formation picker */
+  .swarm-formations {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px;
+  }
+  .swarm-formation-card {
+    background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px;
+    padding: 10px; text-align: center; cursor: pointer; transition: border-color 0.2s;
+  }
+  .swarm-formation-card:hover, .swarm-formation-card.active { border-color: var(--teal); background: rgba(16,185,129,0.08); }
+  .swarm-formation-card .icon { font-size: 24px; margin-bottom: 4px; }
+  .swarm-formation-card .label { font-size: 10px; font-weight: 600; text-transform: uppercase; }
+  /* Mission cards */
+  .swarm-mission-card {
+    background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px;
+    padding: 12px; cursor: pointer; transition: border-color 0.2s;
+  }
+  .swarm-mission-card:hover { border-color: var(--purple); }
+  .swarm-mission-card .icon { font-size: 20px; }
+  .swarm-mission-card h5 { margin: 4px 0 2px; font-size: 13px; }
+  .swarm-mission-card .desc { font-size: 11px; color: var(--text-muted); }
+  /* Sync panel */
+  .swarm-sync-bar {
+    padding: 8px 16px; border-top: 1px solid var(--card-border);
+    display: flex; gap: 8px; align-items: center; background: var(--navy);
+  }
+  .swarm-sync-bar button {
+    background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text);
+    padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;
+  }
+  .swarm-sync-bar button:hover { border-color: var(--teal); }
+  .swarm-sync-bar .emergency {
+    background: rgba(239,68,68,0.15); border-color: var(--danger); color: var(--danger);
+  }
+  .swarm-sync-bar .emergency:hover { background: rgba(239,68,68,0.3); }
+  /* Command bar */
+  .swarm-cmd {
+    display: flex; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--card-border);
+  }
+  .swarm-cmd input {
+    flex: 1; background: var(--card-bg); border: 1px solid var(--card-border);
+    color: var(--text); padding: 8px 12px; border-radius: 8px; font-size: 13px;
+    font-family: inherit; outline: none;
+  }
+  .swarm-cmd input:focus { border-color: var(--teal); }
+  .swarm-cmd button {
+    background: var(--teal); border: none; color: #000; padding: 8px 16px;
+    border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 13px;
+  }
+  /* Mini-map */
+  .swarm-minimap {
+    width: 100%; height: 200px; background: #0d1117; border-radius: 8px;
+    border: 1px solid var(--card-border); position: relative; overflow: hidden;
+  }
+  .swarm-minimap .dot {
+    position: absolute; width: 10px; height: 10px; border-radius: 50%;
+    transform: translate(-50%, -50%); transition: all 0.5s ease;
+  }
+  /* Add device drop area */
+  .swarm-drop-zone {
+    border: 2px dashed var(--card-border); border-radius: 10px; padding: 16px;
+    text-align: center; color: var(--text-muted); font-size: 12px;
+    min-height: 60px; display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.2s;
+  }
+  .swarm-drop-zone:hover { border-color: var(--teal); color: var(--text); }
+
   /* ── Camera / Video Panel ── */
   .camera-panel {
     position: absolute; top: 0; right: 0; bottom: 0; left: 0;
@@ -1930,6 +2060,12 @@
         aria-label="Open Marketplace"
         style="background:transparent;cursor:pointer;font-family:inherit;font-size:13px">
         🏪 Marketplace
+      </button>
+      <button class="nav-link" type="button" onclick="openSwarm()"
+        title="Swarm — multi-robot coordination and formations"
+        aria-label="Open Swarm Control"
+        style="background:transparent;cursor:pointer;font-family:inherit;font-size:13px">
+        🐝 Swarm
       </button>
       <div class="collab-avatars" id="collab-avatars"></div>
       <button class="collab-share-btn" id="collab-share-btn"
@@ -9645,6 +9781,571 @@ setTimeout(collabAttachCursorTracking, 2000);
     }
   }, 500);
 })();
+
+/* ═══════════════════════════════════════════════════════════════
+   SWARM — Multi-Robot Coordination Module
+   ═══════════════════════════════════════════════════════════════ */
+
+let swarmActiveGroup = null;
+let swarmGroups = [];
+let swarmFormations = {};
+let swarmMissionTemplates = {};
+let swarmScene = null;
+let swarmRenderer = null;
+let swarmCamera = null;
+let swarmAnimId = null;
+
+async function openSwarm() {
+  if (document.querySelector('.swarm-overlay')) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'swarm-overlay';
+  overlay.id = 'swarm-overlay';
+  overlay.onclick = e => { if (e.target === overlay) closeSwarm(); };
+  overlay.innerHTML = `
+    <div class="swarm-container">
+      <div class="swarm-header">
+        <h2>🐝 Swarm Control</h2>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn" onclick="swarmCreateGroup()" style="font-size:12px;padding:6px 14px">+ New Group</button>
+          <button class="swarm-close" onclick="closeSwarm()">✕</button>
+        </div>
+      </div>
+      <div class="swarm-body">
+        <div class="swarm-sidebar" id="swarm-sidebar">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px">Groups</div>
+          <div id="swarm-groups-list"></div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px;margin-top:12px">Available Devices</div>
+          <div id="swarm-available-devices"></div>
+        </div>
+        <div class="swarm-main">
+          <div class="swarm-toolbar" id="swarm-toolbar">
+            <span style="font-size:12px;color:var(--text-muted)">Select or create a group to start</span>
+          </div>
+          <div class="swarm-canvas-area" id="swarm-canvas-area">
+            <canvas id="swarm-3d-canvas"></canvas>
+          </div>
+          <div class="swarm-cmd" id="swarm-cmd">
+            <input id="swarm-cmd-input" placeholder="Type a group command... (e.g. 'all takeoff', 'form a circle')" onkeydown="if(event.key==='Enter')swarmSendCommand()">
+            <button onclick="swarmSendCommand()">Send</button>
+          </div>
+          <div class="swarm-sync-bar" id="swarm-sync-bar">
+            <button onclick="swarmSyncAction('countdown')">⏱ Countdown</button>
+            <button onclick="swarmSyncAction('barrier')">🚧 Barrier</button>
+            <button class="emergency" onclick="swarmSyncAction('emergency_stop')">🛑 Emergency Stop All</button>
+            <div style="flex:1"></div>
+            <span id="swarm-sync-status" style="font-size:11px;color:var(--text-muted)"></span>
+          </div>
+        </div>
+        <div class="swarm-right" id="swarm-right">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px;margin-bottom:10px">Formation</div>
+          <div id="swarm-formation-picker" class="swarm-formations"></div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px;margin:16px 0 10px">Members</div>
+          <div id="swarm-members-list"></div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px;margin:16px 0 10px">Missions</div>
+          <div id="swarm-missions-list"></div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.5px;margin:16px 0 10px">Mini-Map</div>
+          <div class="swarm-minimap" id="swarm-minimap"></div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  await swarmInit();
+}
+
+function closeSwarm() {
+  if (swarmAnimId) { cancelAnimationFrame(swarmAnimId); swarmAnimId = null; }
+  if (swarmRenderer) { swarmRenderer.dispose(); swarmRenderer = null; }
+  const el = document.getElementById('swarm-overlay');
+  if (el) el.remove();
+}
+
+async function swarmInit() {
+  // Load data
+  const [groupsRes, formRes, missionsRes] = await Promise.all([
+    api.try('/api/swarm/groups', { silent: true }),
+    api.try('/api/swarm/formations', { silent: true }),
+    api.try('/api/swarm/missions', { silent: true }),
+  ]);
+  swarmGroups = (groupsRes && groupsRes.groups) || [];
+  swarmFormations = (formRes && formRes.formations) || {};
+  swarmMissionTemplates = (missionsRes && missionsRes.templates) || {};
+
+  swarmRenderGroups();
+  swarmRenderAvailableDevices();
+  swarmRenderFormationPicker();
+  swarmRenderMissions();
+  swarmInit3D();
+}
+
+function swarmRenderGroups() {
+  const el = document.getElementById('swarm-groups-list');
+  if (!el) return;
+  if (swarmGroups.length === 0) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:8px">No groups yet. Click "+ New Group" to start.</div>';
+    return;
+  }
+  el.innerHTML = swarmGroups.map(g => `
+    <div class="swarm-group-card ${swarmActiveGroup && swarmActiveGroup.id === g.id ? 'active' : ''}"
+         onclick="swarmSelectGroup('${g.id}')">
+      <h4>🐝 ${g.name}</h4>
+      <div class="meta">${g.size} device${g.size !== 1 ? 's' : ''}${g.formation_type ? ' · ' + g.formation_type : ''}</div>
+    </div>
+  `).join('');
+}
+
+function swarmRenderAvailableDevices() {
+  const el = document.getElementById('swarm-available-devices');
+  if (!el) return;
+  const devList = Object.values(devices);
+  if (devList.length === 0) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:8px">No devices. Add devices in the Studio first.</div>';
+    return;
+  }
+  el.innerHTML = devList.map(d => {
+    const info = d.get_info ? d.get_info() : d;
+    const did = info.id || d.id;
+    const name = info.name || d.name || did;
+    const type = info.device_type || d.device_type || '?';
+    const inGroup = swarmActiveGroup && swarmActiveGroup.members &&
+      swarmActiveGroup.members.some(m => m.device_id === did);
+    return `
+      <div class="swarm-member" style="opacity:${inGroup ? 0.4 : 1}">
+        <div class="dot" style="background:${inGroup ? 'var(--text-muted)' : 'var(--teal)'}"></div>
+        <span class="name">${name} <span style="color:var(--text-muted);font-size:10px">${type}</span></span>
+        ${!inGroup && swarmActiveGroup ? `<button class="btn" style="font-size:10px;padding:2px 8px" onclick="swarmAddDevice('${did}')">Add</button>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function swarmRenderFormationPicker() {
+  const el = document.getElementById('swarm-formation-picker');
+  if (!el) return;
+  const entries = Object.entries(swarmFormations);
+  el.innerHTML = entries.map(([key, f]) => `
+    <div class="swarm-formation-card ${swarmActiveGroup && swarmActiveGroup.formation_type === key ? 'active' : ''}"
+         onclick="swarmSetFormation('${key}')">
+      <div class="icon">${f.icon || '⬜'}</div>
+      <div class="label">${f.name || key}</div>
+    </div>
+  `).join('');
+}
+
+function swarmRenderMissions() {
+  const el = document.getElementById('swarm-missions-list');
+  if (!el) return;
+  const entries = Object.entries(swarmMissionTemplates);
+  el.innerHTML = entries.map(([key, m]) => `
+    <div class="swarm-mission-card" onclick="swarmStartMission('${key}')">
+      <span class="icon">${m.icon || '📋'}</span>
+      <h5>${m.name}</h5>
+      <div class="desc">${m.description}</div>
+    </div>
+  `).join('');
+}
+
+function swarmRenderMembers() {
+  const el = document.getElementById('swarm-members-list');
+  if (!el || !swarmActiveGroup) { if (el) el.innerHTML = ''; return; }
+  const members = swarmActiveGroup.members || [];
+  if (members.length === 0) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text-muted)">No members. Add devices from the sidebar.</div>';
+    return;
+  }
+  const roles = ['unassigned', 'leader', 'follower', 'scout', 'guard'];
+  const roleColors = { leader: '#FFD700', follower: '#4A90D9', scout: '#4CAF50', guard: '#E53935', unassigned: '#9E9E9E' };
+  el.innerHTML = members.map(m => `
+    <div class="swarm-member">
+      <div class="dot" style="background:${roleColors[m.role] || '#9E9E9E'}"></div>
+      <span class="name">${m.name || m.device_id}</span>
+      <select onchange="swarmSetRole('${m.device_id}', this.value)">
+        ${roles.map(r => `<option value="${r}" ${m.role === r ? 'selected' : ''}>${r}</option>`).join('')}
+      </select>
+      <button class="remove-btn" onclick="swarmRemoveDevice('${m.device_id}')" title="Remove">✕</button>
+    </div>
+  `).join('');
+}
+
+function swarmRenderToolbar() {
+  const el = document.getElementById('swarm-toolbar');
+  if (!el) return;
+  if (!swarmActiveGroup) {
+    el.innerHTML = '<span style="font-size:12px;color:var(--text-muted)">Select or create a group to start</span>';
+    return;
+  }
+  const g = swarmActiveGroup;
+  el.innerHTML = `
+    <strong style="font-size:14px">🐝 ${g.name}</strong>
+    <span style="font-size:12px;color:var(--text-muted)">${g.size} devices</span>
+    <div style="flex:1"></div>
+    <button class="btn" style="font-size:11px;padding:4px 10px" onclick="swarmRefreshStatus()">↻ Refresh</button>
+    <button class="btn" style="font-size:11px;padding:4px 10px;border-color:var(--danger);color:var(--danger)" onclick="swarmDeleteGroup()">Delete Group</button>
+  `;
+}
+
+function swarmRenderMinimap() {
+  const el = document.getElementById('swarm-minimap');
+  if (!el || !swarmActiveGroup) { if (el) el.innerHTML = ''; return; }
+  const members = swarmActiveGroup.members || [];
+  const roleColors = { leader: '#FFD700', follower: '#4A90D9', scout: '#4CAF50', guard: '#E53935', unassigned: '#9E9E9E' };
+  // Compute bounds
+  let minX = -50, maxX = 50, minY = -50, maxY = 50;
+  const positions = members.map(m => {
+    const tel = m.telemetry || {};
+    const pos = tel.position || {};
+    return { x: pos.x || 0, y: pos.y || 0 };
+  });
+  positions.forEach(p => {
+    minX = Math.min(minX, p.x - 10); maxX = Math.max(maxX, p.x + 10);
+    minY = Math.min(minY, p.y - 10); maxY = Math.max(maxY, p.y + 10);
+  });
+  const w = el.offsetWidth || 280;
+  const h = el.offsetHeight || 200;
+  const scale = (v, min, max, size) => ((v - min) / (max - min)) * size;
+
+  let dots = members.map((m, i) => {
+    const p = positions[i];
+    const px = scale(p.x, minX, maxX, w);
+    const py = scale(p.y, minY, maxY, h);
+    const col = roleColors[m.role] || '#9E9E9E';
+    return `<div class="dot" style="left:${px}px;top:${py}px;background:${col}" title="${m.name || m.device_id}"></div>`;
+  }).join('');
+
+  // Draw formation lines
+  let svg = `<svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">`;
+  for (let i = 0; i < positions.length - 1; i++) {
+    const p1 = positions[i], p2 = positions[i + 1];
+    const x1 = scale(p1.x, minX, maxX, w), y1 = scale(p1.y, minY, maxY, h);
+    const x2 = scale(p2.x, minX, maxX, w), y2 = scale(p2.y, minY, maxY, h);
+    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="rgba(16,185,129,0.3)" stroke-width="1" stroke-dasharray="4,4"/>`;
+  }
+  svg += '</svg>';
+
+  el.innerHTML = svg + dots;
+}
+
+async function swarmCreateGroup() {
+  const name = prompt('Group name:', `Swarm ${swarmGroups.length + 1}`);
+  if (!name) return;
+  const r = await api.post('/api/swarm/groups', { name });
+  if (r && r.ok) {
+    swarmGroups.push(r.group);
+    swarmActiveGroup = r.group;
+    swarmRenderGroups();
+    swarmRenderToolbar();
+    swarmRenderMembers();
+    swarmRenderAvailableDevices();
+  }
+}
+
+async function swarmSelectGroup(gid) {
+  const r = await api.try(`/api/swarm/groups/${gid}/status`, { silent: true });
+  if (r && r.ok !== false) {
+    swarmActiveGroup = r;
+    // Update groups list
+    const idx = swarmGroups.findIndex(g => g.id === gid);
+    if (idx >= 0) swarmGroups[idx] = r;
+    swarmRenderGroups();
+    swarmRenderToolbar();
+    swarmRenderMembers();
+    swarmRenderFormationPicker();
+    swarmRenderAvailableDevices();
+    swarmRenderMinimap();
+    swarmUpdate3D();
+  }
+}
+
+async function swarmAddDevice(deviceId) {
+  if (!swarmActiveGroup) return;
+  const r = await api.post(`/api/swarm/groups/${swarmActiveGroup.id}/devices`, {
+    device_id: deviceId, action: 'add',
+  });
+  if (r && r.ok) await swarmSelectGroup(swarmActiveGroup.id);
+}
+
+async function swarmRemoveDevice(deviceId) {
+  if (!swarmActiveGroup) return;
+  const r = await api.post(`/api/swarm/groups/${swarmActiveGroup.id}/devices`, {
+    device_id: deviceId, action: 'remove',
+  });
+  if (r && r.ok) await swarmSelectGroup(swarmActiveGroup.id);
+}
+
+async function swarmSetRole(deviceId, role) {
+  if (!swarmActiveGroup) return;
+  await api.post(`/api/swarm/groups/${swarmActiveGroup.id}/role`, {
+    device_id: deviceId, role,
+  });
+  await swarmSelectGroup(swarmActiveGroup.id);
+}
+
+async function swarmSetFormation(ftype) {
+  if (!swarmActiveGroup) return;
+  const r = await api.post(`/api/swarm/groups/${swarmActiveGroup.id}/formation`, {
+    formation_type: ftype, apply: true,
+  });
+  if (r && r.ok) {
+    await swarmSelectGroup(swarmActiveGroup.id);
+    swarmUpdate3D();
+  }
+}
+
+async function swarmStartMission(mtype) {
+  if (!swarmActiveGroup) { alert('Select a group first'); return; }
+  if (swarmActiveGroup.size < 2) { alert('Need at least 2 devices in the group'); return; }
+  const r = await api.post(`/api/swarm/groups/${swarmActiveGroup.id}/mission`, {
+    mission_type: mtype, params: {},
+  });
+  if (r && r.ok) {
+    const ss = document.getElementById('swarm-sync-status');
+    if (ss) ss.textContent = `Mission "${r.mission.name}" started`;
+    await swarmSelectGroup(swarmActiveGroup.id);
+  }
+}
+
+async function swarmSendCommand() {
+  if (!swarmActiveGroup) return;
+  const input = document.getElementById('swarm-cmd-input');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  const r = await api.post(`/api/swarm/groups/${swarmActiveGroup.id}/command`, { text });
+  const ss = document.getElementById('swarm-sync-status');
+  if (ss) ss.textContent = r && r.ok ? 'Command sent' : (r && r.error || 'Failed');
+  setTimeout(() => swarmSelectGroup(swarmActiveGroup.id), 500);
+}
+
+async function swarmSyncAction(action) {
+  if (!swarmActiveGroup) return;
+  const r = await api.post(`/api/swarm/groups/${swarmActiveGroup.id}/sync`, { action });
+  const ss = document.getElementById('swarm-sync-status');
+  if (r && r.ok !== false) {
+    if (action === 'countdown') {
+      ss.textContent = `Countdown: ${r.remaining || 3}s...`;
+      let rem = r.remaining || 3;
+      const iv = setInterval(() => {
+        rem -= 1;
+        ss.textContent = rem > 0 ? `${rem}...` : 'GO!';
+        if (rem <= 0) { clearInterval(iv); setTimeout(() => { ss.textContent = ''; }, 2000); }
+      }, 1000);
+    } else if (action === 'emergency_stop') {
+      ss.textContent = '🛑 Emergency stop executed';
+    } else {
+      ss.textContent = `Barrier created`;
+    }
+  }
+}
+
+async function swarmDeleteGroup() {
+  if (!swarmActiveGroup) return;
+  if (!confirm(`Delete group "${swarmActiveGroup.name}"?`)) return;
+  await api.post('/api/swarm/groups/delete', { group_id: swarmActiveGroup.id });
+  swarmGroups = swarmGroups.filter(g => g.id !== swarmActiveGroup.id);
+  swarmActiveGroup = null;
+  swarmRenderGroups();
+  swarmRenderToolbar();
+  swarmRenderMembers();
+  swarmRenderAvailableDevices();
+}
+
+async function swarmRefreshStatus() {
+  if (swarmActiveGroup) await swarmSelectGroup(swarmActiveGroup.id);
+}
+
+/* ── Swarm 3D Visualization ── */
+
+function swarmInit3D() {
+  const canvas = document.getElementById('swarm-3d-canvas');
+  if (!canvas || typeof THREE === 'undefined') return;
+
+  const container = document.getElementById('swarm-canvas-area');
+  const w = container.offsetWidth || 800;
+  const h = container.offsetHeight || 400;
+
+  swarmScene = new THREE.Scene();
+  swarmScene.background = new THREE.Color(0x0a0e17);
+  swarmScene.fog = new THREE.Fog(0x0a0e17, 80, 200);
+
+  swarmCamera = new THREE.PerspectiveCamera(55, w / h, 0.1, 500);
+  swarmCamera.position.set(0, 30, 40);
+  swarmCamera.lookAt(0, 0, 0);
+
+  swarmRenderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  swarmRenderer.setSize(w, h);
+  swarmRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  // Ground grid
+  const gridHelper = new THREE.GridHelper(100, 20, 0x1a2332, 0x111827);
+  swarmScene.add(gridHelper);
+
+  // Ambient + directional light
+  swarmScene.add(new THREE.AmbientLight(0x667788, 0.6));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  dirLight.position.set(20, 30, 20);
+  swarmScene.add(dirLight);
+
+  // Orbit-like mouse control (simple)
+  let isDragging = false, prevX = 0, prevY = 0;
+  let azimuth = 0, elevation = 30, distance = 50;
+
+  function updateCameraOrbit() {
+    const az = azimuth * Math.PI / 180;
+    const el = elevation * Math.PI / 180;
+    swarmCamera.position.x = distance * Math.cos(el) * Math.sin(az);
+    swarmCamera.position.y = distance * Math.sin(el);
+    swarmCamera.position.z = distance * Math.cos(el) * Math.cos(az);
+    swarmCamera.lookAt(0, 0, 0);
+  }
+
+  canvas.addEventListener('mousedown', e => { isDragging = true; prevX = e.clientX; prevY = e.clientY; });
+  canvas.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    azimuth += (e.clientX - prevX) * 0.5;
+    elevation = Math.max(5, Math.min(85, elevation + (prevY - e.clientY) * 0.3));
+    prevX = e.clientX; prevY = e.clientY;
+    updateCameraOrbit();
+  });
+  canvas.addEventListener('mouseup', () => isDragging = false);
+  canvas.addEventListener('mouseleave', () => isDragging = false);
+  canvas.addEventListener('wheel', e => {
+    distance = Math.max(10, Math.min(150, distance + e.deltaY * 0.05));
+    updateCameraOrbit();
+    e.preventDefault();
+  }, { passive: false });
+
+  updateCameraOrbit();
+  swarmAnimate();
+  swarmUpdate3D();
+}
+
+function swarmAnimate() {
+  if (!swarmRenderer) return;
+  swarmAnimId = requestAnimationFrame(swarmAnimate);
+  // Rotate robot meshes slightly for visual interest
+  swarmScene.children.forEach(c => {
+    if (c.userData && c.userData.isRobot) {
+      c.rotation.y += 0.005;
+    }
+  });
+  swarmRenderer.render(swarmScene, swarmCamera);
+}
+
+function swarmUpdate3D() {
+  if (!swarmScene || !swarmActiveGroup) return;
+  // Remove old robot meshes
+  const toRemove = swarmScene.children.filter(c => c.userData && c.userData.isRobot);
+  toRemove.forEach(c => swarmScene.remove(c));
+  // Remove old formation lines
+  const linesToRemove = swarmScene.children.filter(c => c.userData && c.userData.isFormationLine);
+  linesToRemove.forEach(c => swarmScene.remove(c));
+
+  const members = swarmActiveGroup.members || [];
+  const roleColors = {
+    leader: 0xFFD700, follower: 0x4A90D9, scout: 0x4CAF50,
+    guard: 0xE53935, unassigned: 0x9E9E9E, relay: 0xAB47BC,
+  };
+
+  const positions = [];
+
+  members.forEach((m, i) => {
+    const tel = m.telemetry || {};
+    const pos = tel.position || {};
+    const x = pos.x || (i * 5 - (members.length - 1) * 2.5);
+    const y = pos.z || pos.altitude || 3;
+    const z = pos.y || 0;
+
+    const color = roleColors[m.role] || 0x9E9E9E;
+    const dtype = m.device_type || 'drone';
+
+    let mesh;
+    if (dtype === 'drone') {
+      // Drone = disc + rotors
+      const body = new THREE.CylinderGeometry(0.8, 0.6, 0.3, 8);
+      mesh = new THREE.Mesh(body, new THREE.MeshPhongMaterial({ color, emissive: color, emissiveIntensity: 0.2 }));
+      // Arms
+      for (let a = 0; a < 4; a++) {
+        const arm = new THREE.Mesh(
+          new THREE.BoxGeometry(2.5, 0.08, 0.08),
+          new THREE.MeshPhongMaterial({ color: 0x555555 })
+        );
+        arm.rotation.y = (a * Math.PI) / 2;
+        mesh.add(arm);
+        // Rotor disc
+        const rotor = new THREE.Mesh(
+          new THREE.RingGeometry(0.3, 0.6, 12),
+          new THREE.MeshPhongMaterial({ color: 0x88bbdd, transparent: true, opacity: 0.4, side: THREE.DoubleSide })
+        );
+        rotor.position.set(Math.cos(a * Math.PI / 2) * 1.2, 0.2, Math.sin(a * Math.PI / 2) * 1.2);
+        rotor.rotation.x = -Math.PI / 2;
+        mesh.add(rotor);
+      }
+    } else if (dtype === 'robot_arm') {
+      const base = new THREE.CylinderGeometry(0.6, 0.8, 0.4, 12);
+      mesh = new THREE.Mesh(base, new THREE.MeshPhongMaterial({ color }));
+      const arm1 = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.5, 0.15), new THREE.MeshPhongMaterial({ color: 0x888888 }));
+      arm1.position.y = 0.95;
+      mesh.add(arm1);
+    } else {
+      // Generic rover/box
+      const box = new THREE.BoxGeometry(1.4, 0.6, 1);
+      mesh = new THREE.Mesh(box, new THREE.MeshPhongMaterial({ color, emissive: color, emissiveIntensity: 0.15 }));
+      // Wheels
+      for (let wx = -1; wx <= 1; wx += 2) {
+        for (let wz = -1; wz <= 1; wz += 2) {
+          const wheel = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.2, 0.2, 0.1, 8),
+            new THREE.MeshPhongMaterial({ color: 0x333333 })
+          );
+          wheel.position.set(wx * 0.6, -0.3, wz * 0.4);
+          wheel.rotation.z = Math.PI / 2;
+          mesh.add(wheel);
+        }
+      }
+    }
+
+    mesh.position.set(x, y, z);
+    mesh.userData = { isRobot: true, deviceId: m.device_id, role: m.role };
+
+    // Label sprite
+    const labelCanvas = document.createElement('canvas');
+    labelCanvas.width = 256; labelCanvas.height = 64;
+    const ctx = labelCanvas.getContext('2d');
+    ctx.fillStyle = '#' + color.toString(16).padStart(6, '0');
+    ctx.font = 'bold 24px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(m.name || m.device_id, 128, 28);
+    ctx.font = '16px sans-serif';
+    ctx.fillStyle = '#aaa';
+    ctx.fillText(m.role || '', 128, 52);
+    const labelTex = new THREE.CanvasTexture(labelCanvas);
+    const labelMat = new THREE.SpriteMaterial({ map: labelTex, transparent: true });
+    const label = new THREE.Sprite(labelMat);
+    label.scale.set(4, 1, 1);
+    label.position.y = 2.5;
+    mesh.add(label);
+
+    swarmScene.add(mesh);
+    positions.push(new THREE.Vector3(x, y, z));
+  });
+
+  // Draw formation lines between adjacent robots
+  if (positions.length >= 2) {
+    const lineGeo = new THREE.BufferGeometry().setFromPoints(positions);
+    const lineMat = new THREE.LineBasicMaterial({ color: 0x10B981, transparent: true, opacity: 0.4 });
+    const line = new THREE.Line(lineGeo, lineMat);
+    line.userData = { isFormationLine: true };
+    swarmScene.add(line);
+
+    // If circle formation, close the loop
+    if (swarmActiveGroup.formation_type === 'circle' && positions.length > 2) {
+      const closeGeo = new THREE.BufferGeometry().setFromPoints([positions[positions.length - 1], positions[0]]);
+      const closeLine = new THREE.Line(closeGeo, lineMat.clone());
+      closeLine.userData = { isFormationLine: true };
+      swarmScene.add(closeLine);
+    }
+  }
+}
 
 installKeyboardShortcuts();
 installCmdbarHandlers();

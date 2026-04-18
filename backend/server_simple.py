@@ -213,6 +213,9 @@ from omnix.sensors.simulator import auto_register_sensors
 # Import OTA Firmware Update system
 from omnix.ota import OTAManager, OTADeployer, FirmwareBuilder
 
+# Import Swarm Coordination
+from omnix.swarm import SwarmCoordinator, FORMATIONS, MISSION_TEMPLATES
+
 # Marketplace store — session-scoped, seeded on first access
 marketplace_store = MarketplaceStore()
 marketplace_installer = Installer(marketplace_store)
@@ -236,6 +239,9 @@ firmware_builder = FirmwareBuilder()
 
 # Preload existing sketches as available firmware
 ota_manager.preload_existing_sketches()
+
+# Swarm Coordinator — session-scoped
+swarm_coordinator = SwarmCoordinator()
 
 # WebSocket server (initialized in main() if enabled)
 ws_server = None
@@ -1203,6 +1209,31 @@ class OmnixHandler(SimpleHTTPRequestHandler):
                 "available": firmware_builder.is_available(),
                 "boards": firmware_builder.list_boards() if firmware_builder.is_available() else [],
             })
+
+        # ── Swarm Coordination GET routes ──────────────────
+        elif parsed.path == "/api/swarm/groups":
+            self._json_response({"ok": True, "groups": swarm_coordinator.list_groups()})
+
+        elif parsed.path.startswith("/api/swarm/groups/") and parsed.path.endswith("/status"):
+            gid = parsed.path.split("/api/swarm/groups/")[1].rsplit("/status")[0]
+            self._json_response(swarm_coordinator.group_status(gid, devices))
+
+        elif parsed.path == "/api/swarm/formations":
+            self._json_response({
+                "ok": True,
+                "formations": {k: f.to_dict() for k, f in FORMATIONS.items()},
+            })
+
+        elif parsed.path == "/api/swarm/missions":
+            self._json_response({"ok": True, "templates": MISSION_TEMPLATES})
+
+        elif parsed.path.startswith("/api/swarm/mission/"):
+            mid = parsed.path.split("/api/swarm/mission/")[1]
+            m = swarm_coordinator.get_mission(mid)
+            if m:
+                self._json_response({"ok": True, "mission": m})
+            else:
+                self._json_response({"ok": False, "error": "mission not found"}, status=404)
 
         else:
             # Auto-redirect mobile user-agents to mobile PWA from root
@@ -2499,6 +2530,128 @@ class OmnixHandler(SimpleHTTPRequestHandler):
                 self._json_response({"ok": True, "config": src.info() if src else {}})
             else:
                 self._json_response({"error": "Video source not found"}, 404)
+
+        # ── Swarm Coordination POST routes ────────────────
+
+        elif parsed.path == "/api/swarm/groups":
+            # POST /api/swarm/groups — create a new group
+            name = data.get("name", "Untitled Group")
+            desc = data.get("description", "")
+            group = swarm_coordinator.create_group(name, desc)
+            # Auto-add devices if provided
+            for d in data.get("device_ids", []):
+                swarm_coordinator.add_device_to_group(group.id, d)
+            self._json_response({"ok": True, "group": group.to_dict()})
+
+        elif parsed.path.startswith("/api/swarm/groups/") and parsed.path.endswith("/devices"):
+            gid = parsed.path.split("/api/swarm/groups/")[1].rsplit("/devices")[0]
+            action = data.get("action", "add")
+            device_id = data.get("device_id", "")
+            role = data.get("role", "unassigned")
+            if action == "remove":
+                self._json_response(swarm_coordinator.remove_device_from_group(gid, device_id))
+            else:
+                self._json_response(swarm_coordinator.add_device_to_group(gid, device_id, role))
+
+        elif parsed.path.startswith("/api/swarm/groups/") and parsed.path.endswith("/formation"):
+            gid = parsed.path.split("/api/swarm/groups/")[1].rsplit("/formation")[0]
+            ft = data.get("formation_type", "line")
+            params = data.get("params", {})
+            apply_to_devices = data.get("apply", False)
+            result = swarm_coordinator.set_formation(
+                gid, ft, params, devices if apply_to_devices else None,
+            )
+            self._json_response(result)
+
+        elif parsed.path.startswith("/api/swarm/groups/") and parsed.path.endswith("/command"):
+            gid = parsed.path.split("/api/swarm/groups/")[1].rsplit("/command")[0]
+            text = data.get("text", "")
+            if text:
+                # NLP-aware group command
+                parsed_cmd = swarm_coordinator.parse_group_command(text, devices)
+                group = swarm_coordinator.get_group(gid)
+                if not group:
+                    self._json_response({"ok": False, "error": "group not found"}, 404)
+                elif parsed_cmd.get("type") == "formation":
+                    result = swarm_coordinator.set_formation(
+                        gid, parsed_cmd["formation_type"],
+                        parsed_cmd.get("params", {}), devices,
+                    )
+                    result["nlp"] = parsed_cmd
+                    self._json_response(result)
+                elif parsed_cmd.get("type") == "sync_takeoff":
+                    self._json_response(swarm_coordinator.synchronized_takeoff(gid, 5.0, devices))
+                elif parsed_cmd.get("type") == "sync_land":
+                    self._json_response(swarm_coordinator.synchronized_land(gid, devices))
+                elif parsed_cmd.get("type") == "emergency_stop":
+                    self._json_response(swarm_coordinator.emergency_stop(gid, devices))
+                elif parsed_cmd.get("type") == "mission":
+                    result = swarm_coordinator.start_mission(
+                        gid, parsed_cmd["mission_type"], data.get("params", {}), devices,
+                    )
+                    result["nlp"] = parsed_cmd
+                    self._json_response(result)
+                else:
+                    # Broadcast as raw command
+                    cmd = data.get("command", "hover")
+                    params = data.get("params", {})
+                    self._json_response(swarm_coordinator.broadcast_command(gid, cmd, params, devices))
+            else:
+                cmd = data.get("command", "")
+                params = data.get("params", {})
+                self._json_response(swarm_coordinator.broadcast_command(gid, cmd, params, devices))
+
+        elif parsed.path.startswith("/api/swarm/groups/") and parsed.path.endswith("/mission"):
+            gid = parsed.path.split("/api/swarm/groups/")[1].rsplit("/mission")[0]
+            mt = data.get("mission_type", "area_search")
+            params = data.get("params", {})
+            self._json_response(swarm_coordinator.start_mission(gid, mt, params, devices))
+
+        elif parsed.path.startswith("/api/swarm/groups/") and parsed.path.endswith("/sync"):
+            gid = parsed.path.split("/api/swarm/groups/")[1].rsplit("/sync")[0]
+            action = data.get("action", "barrier")
+            group = swarm_coordinator.get_group(gid)
+            if not group:
+                self._json_response({"ok": False, "error": "group not found"}, 404)
+            elif action == "barrier":
+                label = data.get("label", "checkpoint")
+                b = swarm_coordinator.sync.create_barrier(gid, label, group.device_ids())
+                self._json_response({"ok": True, "barrier": b.to_dict()})
+            elif action == "countdown":
+                secs = int(data.get("seconds", 3))
+                label = data.get("label", "Launch")
+                c = swarm_coordinator.sync.create_countdown(gid, secs, label)
+                result = swarm_coordinator.sync.start_countdown(c.id)
+                self._json_response(result)
+            elif action == "emergency_stop":
+                self._json_response(swarm_coordinator.emergency_stop(gid, devices))
+            elif action == "arrive":
+                barrier_id = data.get("barrier_id", "")
+                device_id = data.get("device_id", "")
+                self._json_response(swarm_coordinator.sync.arrive_barrier(barrier_id, device_id))
+            else:
+                self._json_response({"ok": False, "error": f"unknown sync action: {action}"}, 400)
+
+        elif parsed.path.startswith("/api/swarm/groups/") and parsed.path.endswith("/role"):
+            gid = parsed.path.split("/api/swarm/groups/")[1].rsplit("/role")[0]
+            device_id = data.get("device_id", "")
+            role = data.get("role", "unassigned")
+            self._json_response(swarm_coordinator.set_device_role(gid, device_id, role))
+
+        elif parsed.path == "/api/swarm/groups/delete":
+            gid = data.get("group_id", "")
+            ok = swarm_coordinator.delete_group(gid)
+            self._json_response({"ok": ok})
+
+        elif parsed.path == "/api/swarm/formation-preview":
+            ft = data.get("formation_type", "line")
+            count = int(data.get("count", 4))
+            params = data.get("params", {})
+            self._json_response(swarm_coordinator.get_formation_preview(ft, count, params))
+
+        elif parsed.path.startswith("/api/swarm/mission/") and parsed.path.endswith("/stop"):
+            mid = parsed.path.split("/api/swarm/mission/")[1].rsplit("/stop")[0]
+            self._json_response(swarm_coordinator.stop_mission(mid))
 
         else:
             self._json_response({"error": "Not found"}, 404)
