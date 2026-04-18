@@ -1,0 +1,107 @@
+# OMNIX Docker Compose
+#
+# Quick start:
+#   docker-compose up
+#
+# With persistence (SQLite is default, Postgres optional):
+#   docker-compose --profile postgres up
+
+version: "3.8"
+
+services:
+  # ── OMNIX Server ──
+  omnix:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${OMNIX_PORT:-8765}:8765"
+      - "${OMNIX_WS_PORT:-8766}:8766"
+    environment:
+      - OMNIX_ENV=${OMNIX_ENV:-production}
+      - OMNIX_HOST=0.0.0.0
+      - OMNIX_PORT=8765
+      - OMNIX_WS_ENABLED=${OMNIX_WS_ENABLED:-true}
+      - OMNIX_WS_PORT=8766
+      - OMNIX_LOG_LEVEL=${OMNIX_LOG_LEVEL:-INFO}
+      - OMNIX_LOG_JSON=${OMNIX_LOG_JSON:-true}
+      - OMNIX_JWT_SECRET=${OMNIX_JWT_SECRET:-}
+      - OMNIX_GUEST_MODE=${OMNIX_GUEST_MODE:-true}
+      - OMNIX_ADMIN_USER=${OMNIX_ADMIN_USER:-admin}
+      - OMNIX_ADMIN_PASSWORD=${OMNIX_ADMIN_PASSWORD:-omnix-admin}
+      - OMNIX_DB_BACKEND=${OMNIX_DB_BACKEND:-sqlite}
+      - OMNIX_DB_PATH=/app/data/omnix.db
+      - OMNIX_DB_URL=${OMNIX_DB_URL:-}
+      - OMNIX_CORS_ORIGINS=${OMNIX_CORS_ORIGINS:-*}
+      - OMNIX_RATE_LIMIT_AUTH=${OMNIX_RATE_LIMIT_AUTH:-10}
+      - OMNIX_RATE_LIMIT_API=${OMNIX_RATE_LIMIT_API:-100}
+    volumes:
+      - omnix-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8765/healthz"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    depends_on: []
+
+  # ── Redis (optional — for session storage & caching) ──
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    profiles:
+      - redis
+      - full
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # ── Postgres (optional — for production persistence) ──
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: omnix
+      POSTGRES_USER: omnix
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-omnix-dev-password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    profiles:
+      - postgres
+      - full
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U omnix"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Nginx Reverse Proxy (optional — for HTTPS termination) ──
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Uncomment and provide SSL certs for HTTPS:
+      # - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      - omnix
+    restart: unless-stopped
+    profiles:
+      - nginx
+      - full
+
+volumes:
+  omnix-data:
+  redis-data:
+  postgres-data:

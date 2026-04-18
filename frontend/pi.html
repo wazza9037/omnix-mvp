@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OMNIX — Pi Manager</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        /* ── Header ── */
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 20px 30px;
+            border-bottom: 1px solid #2a2a4a;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header h1 {
+            font-size: 1.5rem;
+            background: linear-gradient(90deg, #00d4ff, #7b2ff7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header .subtitle { color: #888; font-size: 0.85rem; margin-top: 2px; }
+        .nav-links { display: flex; gap: 12px; }
+        .nav-links a {
+            color: #888;
+            text-decoration: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+        .nav-links a:hover { background: #1e1e3a; color: #fff; }
+
+        /* ── Main Layout ── */
+        .main { display: flex; height: calc(100vh - 70px); }
+
+        /* ── Left Panel: Agent List ── */
+        .agent-list {
+            width: 320px;
+            border-right: 1px solid #1e1e3a;
+            overflow-y: auto;
+            padding: 16px;
+            background: #0d0d15;
+        }
+        .section-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+            margin-bottom: 12px;
+        }
+        .agent-card {
+            background: #141425;
+            border: 1px solid #2a2a4a;
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .agent-card:hover { border-color: #00d4ff55; }
+        .agent-card.selected { border-color: #00d4ff; box-shadow: 0 0 12px #00d4ff22; }
+        .agent-card .top-row { display: flex; justify-content: space-between; align-items: center; }
+        .agent-card .name { font-weight: 600; font-size: 0.95rem; }
+        .agent-card .type-badge {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: #7b2ff722;
+            color: #b388ff;
+        }
+        .agent-card .status-row {
+            display: flex; align-items: center; gap: 6px;
+            margin-top: 8px; font-size: 0.8rem; color: #888;
+        }
+        .status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+        }
+        .status-dot.online { background: #4caf50; box-shadow: 0 0 6px #4caf5088; }
+        .status-dot.offline { background: #666; }
+        .agent-card .hw-row {
+            display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;
+        }
+        .hw-chip {
+            font-size: 0.7rem;
+            padding: 2px 7px;
+            border-radius: 4px;
+            background: #1e1e3a;
+            color: #aaa;
+        }
+
+        .no-agents {
+            text-align: center;
+            padding: 40px 20px;
+            color: #555;
+        }
+        .no-agents .icon { font-size: 3rem; margin-bottom: 12px; }
+        .no-agents h3 { color: #888; margin-bottom: 8px; }
+        .no-agents code {
+            display: block;
+            background: #141425;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 12px;
+            font-size: 0.8rem;
+            color: #00d4ff;
+        }
+
+        /* ── Right Panel: Agent Detail ── */
+        .agent-detail {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+        .detail-header {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            margin-bottom: 24px;
+        }
+        .detail-header h2 { font-size: 1.4rem; }
+        .detail-header .desc { color: #888; font-size: 0.9rem; margin-top: 4px; }
+
+        /* Grid sections */
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .detail-card {
+            background: #141425;
+            border: 1px solid #1e1e3a;
+            border-radius: 10px;
+            padding: 16px;
+        }
+        .detail-card h3 {
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .detail-card.full-width {
+            grid-column: 1 / -1;
+        }
+
+        /* Telemetry values */
+        .telem-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid #1a1a2e;
+        }
+        .telem-item:last-child { border-bottom: none; }
+        .telem-label { color: #888; font-size: 0.85rem; }
+        .telem-value { font-family: monospace; font-size: 0.9rem; color: #00d4ff; }
+
+        /* Motor/Servo controls */
+        .control-group { margin-bottom: 16px; }
+        .control-group label {
+            display: block;
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 4px;
+        }
+        .control-row {
+            display: flex; gap: 8px; align-items: center;
+        }
+        .control-row input[type="range"] {
+            flex: 1;
+            accent-color: #00d4ff;
+        }
+        .control-row .val {
+            font-family: monospace;
+            min-width: 40px;
+            text-align: right;
+            color: #00d4ff;
+        }
+        .btn-group { display: flex; gap: 6px; margin-top: 6px; }
+        .btn {
+            padding: 6px 14px;
+            border: 1px solid #2a2a4a;
+            border-radius: 6px;
+            background: #1e1e3a;
+            color: #ccc;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+        .btn:hover { background: #2a2a5a; color: #fff; }
+        .btn.active { background: #00d4ff22; border-color: #00d4ff; color: #00d4ff; }
+        .btn.danger { border-color: #ff4444; color: #ff4444; }
+        .btn.danger:hover { background: #ff444422; }
+        .btn.primary { background: #7b2ff733; border-color: #7b2ff7; color: #b388ff; }
+        .btn.primary:hover { background: #7b2ff755; }
+
+        /* Command log */
+        .cmd-log {
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+        .cmd-entry {
+            padding: 4px 8px;
+            border-bottom: 1px solid #1a1a2e;
+        }
+        .cmd-entry .time { color: #555; }
+        .cmd-entry .cmd { color: #00d4ff; }
+        .cmd-entry .result { color: #4caf50; }
+
+        /* ── Empty state ── */
+        .empty-detail {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #555;
+        }
+        .empty-detail .icon { font-size: 4rem; margin-bottom: 16px; }
+
+        /* ── Sensor gauges ── */
+        .gauge-row {
+            display: flex; gap: 16px; flex-wrap: wrap;
+        }
+        .gauge {
+            text-align: center;
+            min-width: 80px;
+        }
+        .gauge .value {
+            font-size: 1.4rem;
+            font-family: monospace;
+            color: #00d4ff;
+        }
+        .gauge .unit { font-size: 0.75rem; color: #666; }
+        .gauge .label { font-size: 0.75rem; color: #888; margin-top: 2px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>OMNIX Pi Manager</h1>
+            <div class="subtitle">Connect and control Raspberry Pi devices</div>
+        </div>
+        <div class="nav-links">
+            <a href="/">Dashboard</a>
+            <a href="/vpe.html">Physics Engine</a>
+            <a href="/motion3d.html">Motion 3D</a>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="agent-list" id="agentList">
+            <div class="section-title">Connected Pi Agents</div>
+            <div id="agentCards"></div>
+        </div>
+
+        <div class="agent-detail" id="agentDetail">
+            <div class="empty-detail" id="emptyState">
+                <div class="icon">🍓</div>
+                <h3>No Pi Agent Selected</h3>
+                <p style="margin-top: 8px; color: #666; text-align: center; max-width: 400px;">
+                    Connect a Raspberry Pi by running the agent script:
+                </p>
+                <code style="display: block; background: #141425; padding: 12px 20px; border-radius: 8px; margin-top: 12px; color: #00d4ff; font-size: 0.85rem;">
+                    python pi_agent.py --server http://&lt;server-ip&gt;:8765
+                </code>
+                <p style="margin-top: 16px; color: #555; font-size: 0.85rem;">
+                    Built-in profiles: <span style="color:#b388ff">rover</span>,
+                    <span style="color:#b388ff">arm</span>,
+                    <span style="color:#b388ff">sentinel</span>
+                </p>
+            </div>
+
+            <div id="detailContent" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+    // ═══════════════════════════════════════════
+    //  STATE
+    // ═══════════════════════════════════════════
+    let agents = [];
+    let selectedAgentId = null;
+    let commandLog = [];
+    let pollInterval = null;
+
+    const CAT_ICONS = {
+        drone: '🛸', ground_robot: '🤖', robot_arm: '🦾',
+        humanoid: '🧑‍🤖', smart_light: '💡', smart_device: '📱',
+        legged: '🐾', home_robot: '🏠', service_robot: '🧾',
+        warehouse: '🏭', medical: '⚕️', marine: '🌊',
+        space: '🚀', extreme: '🔥',
+    };
+
+    // ═══════════════════════════════════════════
+    //  POLLING
+    // ═══════════════════════════════════════════
+
+    async function fetchAgents() {
+        try {
+            const resp = await fetch('/api/pi/agents');
+            agents = await resp.json();
+            renderAgentList();
+            if (selectedAgentId) {
+                const agent = agents.find(a => a.agent_id === selectedAgentId);
+                if (agent) renderAgentDetail(agent);
+            }
+        } catch (e) {
+            // Server unreachable — ignore
+        }
+    }
+
+    // ═══════════════════════════════════════════
+    //  AGENT LIST (Left Panel)
+    // ═══════════════════════════════════════════
+
+    function renderAgentList() {
+        const container = document.getElementById('agentCards');
+
+        if (agents.length === 0) {
+            container.innerHTML = `
+                <div class="no-agents">
+                    <div class="icon">📡</div>
+                    <h3>Waiting for Pi agents...</h3>
+                    <p style="font-size:0.85rem; margin-top:8px;">
+                        No Raspberry Pi devices connected yet.
+                    </p>
+                    <code>python pi_agent.py --profile rover</code>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = agents.map(a => {
+            const icon = CAT_ICONS[a.device_type] || '🤖';
+            const hw = a.hardware || {};
+            const isSelected = a.agent_id === selectedAgentId;
+            const online = a.online !== false;
+
+            let chips = [];
+            if (hw.motors && hw.motors.length) chips.push(`${hw.motors.length} motors`);
+            if (hw.servos && hw.servos.length) chips.push(`${hw.servos.length} servos`);
+            if (hw.sensors && hw.sensors.length) chips.push(`${hw.sensors.length} sensors`);
+            if (hw.camera && hw.camera !== 'none') chips.push(`cam: ${hw.camera}`);
+
+            return `
+                <div class="agent-card ${isSelected ? 'selected' : ''}"
+                     onclick="selectAgent('${a.agent_id}')">
+                    <div class="top-row">
+                        <span class="name">${icon} ${a.name}</span>
+                        <span class="type-badge">${a.device_type}</span>
+                    </div>
+                    <div class="status-row">
+                        <span class="status-dot ${online ? 'online' : 'offline'}"></span>
+                        <span>${online ? 'Online' : 'Offline'}</span>
+                        <span style="margin-left:auto; color:#555; font-size:0.75rem;">
+                            ${hw.gpio_mode || 'unknown'}
+                        </span>
+                    </div>
+                    <div class="hw-row">
+                        ${chips.map(c => `<span class="hw-chip">${c}</span>`).join('')}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function selectAgent(agentId) {
+        selectedAgentId = agentId;
+        const agent = agents.find(a => a.agent_id === agentId);
+        if (agent) {
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('detailContent').style.display = 'block';
+            renderAgentDetail(agent);
+        }
+        renderAgentList();
+    }
+
+    // ═══════════════════════════════════════════
+    //  AGENT DETAIL (Right Panel)
+    // ═══════════════════════════════════════════
+
+    function renderAgentDetail(agent) {
+        const hw = agent.hardware || {};
+        const telem = agent.telemetry || {};
+        const online = agent.online !== false;
+        const icon = CAT_ICONS[agent.device_type] || '🤖';
+
+        let html = `
+            <div class="detail-header">
+                <div>
+                    <h2>${icon} ${agent.name}</h2>
+                    <div class="desc">${agent.description || agent.device_type}</div>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn primary" onclick="scanWithVpe('${agent.agent_id}')">
+                        📷 Scan with VPE
+                    </button>
+                    <button class="btn danger" onclick="emergencyStop('${agent.agent_id}')">
+                        🛑 E-Stop
+                    </button>
+                </div>
+            </div>
+
+            <div class="detail-grid">
+        `;
+
+        // ── Sensors Card ──
+        html += `<div class="detail-card"><h3>📊 Sensors</h3>`;
+        const sensors = telem.sensors || {};
+        if (Object.keys(sensors).length > 0) {
+            html += '<div class="gauge-row">';
+            for (const [name, data] of Object.entries(sensors)) {
+                if (data.distance_cm !== undefined) {
+                    html += `<div class="gauge">
+                        <div class="value">${data.distance_cm}</div>
+                        <div class="unit">cm</div>
+                        <div class="label">${name}</div>
+                    </div>`;
+                }
+                if (data.temperature_c !== undefined) {
+                    html += `<div class="gauge">
+                        <div class="value">${data.temperature_c}</div>
+                        <div class="unit">°C</div>
+                        <div class="label">${name} temp</div>
+                    </div>`;
+                }
+                if (data.humidity_pct !== undefined) {
+                    html += `<div class="gauge">
+                        <div class="value">${data.humidity_pct}</div>
+                        <div class="unit">%</div>
+                        <div class="label">humidity</div>
+                    </div>`;
+                }
+                if (data.accel) {
+                    html += `<div class="gauge">
+                        <div class="value" style="font-size:0.9rem;">
+                            ${data.accel.x.toFixed(1)} / ${data.accel.y.toFixed(1)} / ${data.accel.z.toFixed(1)}
+                        </div>
+                        <div class="unit">m/s² (x/y/z)</div>
+                        <div class="label">${name} accel</div>
+                    </div>`;
+                }
+            }
+            html += '</div>';
+        } else {
+            html += '<div style="color:#555;">No sensor data yet</div>';
+        }
+        html += '</div>';
+
+        // ── GPIO State Card ──
+        const gpio = telem.gpio || {};
+        html += `<div class="detail-card"><h3>⚡ GPIO State</h3>`;
+        html += `<div class="telem-item">
+            <span class="telem-label">Mode</span>
+            <span class="telem-value">${gpio.gpio_mode || hw.gpio_mode || '?'}</span>
+        </div>`;
+        // Motors
+        const motors = gpio.motors || {};
+        for (const [name, state] of Object.entries(motors)) {
+            html += `<div class="telem-item">
+                <span class="telem-label">Motor: ${name}</span>
+                <span class="telem-value">${state.direction} @ ${(state.speed * 100).toFixed(0)}%</span>
+            </div>`;
+        }
+        // Servos
+        const servos = gpio.servos || {};
+        for (const [name, state] of Object.entries(servos)) {
+            html += `<div class="telem-item">
+                <span class="telem-label">Servo: ${name}</span>
+                <span class="telem-value">${state.angle}°</span>
+            </div>`;
+        }
+        html += '</div>';
+
+        // ── Motor Controls Card ──
+        const motorNames = hw.motors || Object.keys(motors);
+        if (motorNames.length > 0) {
+            html += `<div class="detail-card"><h3>🏎️ Motor Controls</h3>`;
+            for (const name of motorNames) {
+                const currentSpeed = motors[name] ? motors[name].speed : 0;
+                const currentDir = motors[name] ? motors[name].direction : 'stopped';
+                html += `
+                    <div class="control-group">
+                        <label>${name}</label>
+                        <div class="control-row">
+                            <input type="range" min="0" max="100" value="${currentSpeed * 100}"
+                                   oninput="this.nextElementSibling.textContent = this.value + '%'"
+                                   id="motor-speed-${name}">
+                            <span class="val">${(currentSpeed * 100).toFixed(0)}%</span>
+                        </div>
+                        <div class="btn-group">
+                            <button class="btn ${currentDir === 'forward' ? 'active' : ''}"
+                                    onclick="sendMotor('${agent.agent_id}', '${name}', 'forward')">Forward</button>
+                            <button class="btn ${currentDir === 'stopped' ? 'active' : ''}"
+                                    onclick="sendMotor('${agent.agent_id}', '${name}', 'stopped')">Stop</button>
+                            <button class="btn ${currentDir === 'backward' ? 'active' : ''}"
+                                    onclick="sendMotor('${agent.agent_id}', '${name}', 'backward')">Reverse</button>
+                        </div>
+                    </div>
+                `;
+            }
+            // Quick drive buttons
+            html += `
+                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #1e1e3a;">
+                    <label style="font-size:0.8rem; color:#888; margin-bottom:6px; display:block;">Quick Drive</label>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px; max-width:200px;">
+                        <div></div>
+                        <button class="btn" onclick="quickDrive('${agent.agent_id}', 'forward')">⬆️</button>
+                        <div></div>
+                        <button class="btn" onclick="quickDrive('${agent.agent_id}', 'left')">⬅️</button>
+                        <button class="btn danger" onclick="quickDrive('${agent.agent_id}', 'stop')">⏹</button>
+                        <button class="btn" onclick="quickDrive('${agent.agent_id}', 'right')">➡️</button>
+                        <div></div>
+                        <button class="btn" onclick="quickDrive('${agent.agent_id}', 'backward')">⬇️</button>
+                        <div></div>
+                    </div>
+                </div>
+            `;
+            html += '</div>';
+        }
+
+        // ── Servo Controls Card ──
+        const servoNames = hw.servos || Object.keys(servos);
+        if (servoNames.length > 0) {
+            html += `<div class="detail-card"><h3>🎯 Servo Controls</h3>`;
+            for (const name of servoNames) {
+                const currentAngle = servos[name] ? servos[name].angle : 90;
+                html += `
+                    <div class="control-group">
+                        <label>${name}</label>
+                        <div class="control-row">
+                            <input type="range" min="0" max="180" value="${currentAngle}"
+                                   oninput="this.nextElementSibling.textContent = this.value + '°'; sendServo('${agent.agent_id}', '${name}', parseInt(this.value))"
+                                   id="servo-angle-${name}">
+                            <span class="val">${currentAngle}°</span>
+                        </div>
+                    </div>
+                `;
+            }
+            html += '</div>';
+        }
+
+        // ── Command Log Card ──
+        html += `<div class="detail-card full-width"><h3>📋 Command Log</h3>`;
+        html += '<div class="cmd-log" id="cmdLog">';
+        if (commandLog.length === 0) {
+            html += '<div style="color:#555; font-size:0.85rem;">No commands sent yet</div>';
+        } else {
+            for (const entry of commandLog.slice(-20).reverse()) {
+                html += `<div class="cmd-entry">
+                    <span class="time">${new Date(entry.time).toLocaleTimeString()}</span>
+                    <span class="cmd"> ${entry.command}</span>
+                    ${entry.params ? `<span style="color:#666;"> ${JSON.stringify(entry.params)}</span>` : ''}
+                </div>`;
+            }
+        }
+        html += '</div></div>';
+
+        html += '</div>'; // close detail-grid
+
+        document.getElementById('detailContent').innerHTML = html;
+    }
+
+    // ═══════════════════════════════════════════
+    //  COMMAND HELPERS
+    // ═══════════════════════════════════════════
+
+    async function sendCommand(agentId, command, params = {}) {
+        commandLog.push({ time: Date.now(), command, params });
+        try {
+            const resp = await fetch('/api/pi/send-command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ agent_id: agentId, command, params }),
+            });
+            return await resp.json();
+        } catch (e) {
+            console.error('Command failed:', e);
+            return { error: e.message };
+        }
+    }
+
+    function sendMotor(agentId, name, direction) {
+        const slider = document.getElementById(`motor-speed-${name}`);
+        const speed = slider ? parseInt(slider.value) / 100 : 0.5;
+        sendCommand(agentId, 'set_motor', { name, speed, direction });
+    }
+
+    function sendServo(agentId, name, angle) {
+        sendCommand(agentId, 'set_servo', { name, angle });
+    }
+
+    function emergencyStop(agentId) {
+        sendCommand(agentId, 'stop_all');
+    }
+
+    function quickDrive(agentId, direction) {
+        switch (direction) {
+            case 'forward':
+                sendCommand(agentId, 'set_motor', { name: 'left', speed: 0.7, direction: 'forward' });
+                sendCommand(agentId, 'set_motor', { name: 'right', speed: 0.7, direction: 'forward' });
+                break;
+            case 'backward':
+                sendCommand(agentId, 'set_motor', { name: 'left', speed: 0.5, direction: 'backward' });
+                sendCommand(agentId, 'set_motor', { name: 'right', speed: 0.5, direction: 'backward' });
+                break;
+            case 'left':
+                sendCommand(agentId, 'set_motor', { name: 'left', speed: 0.3, direction: 'backward' });
+                sendCommand(agentId, 'set_motor', { name: 'right', speed: 0.5, direction: 'forward' });
+                break;
+            case 'right':
+                sendCommand(agentId, 'set_motor', { name: 'left', speed: 0.5, direction: 'forward' });
+                sendCommand(agentId, 'set_motor', { name: 'right', speed: 0.3, direction: 'backward' });
+                break;
+            case 'stop':
+                sendCommand(agentId, 'stop_all');
+                break;
+        }
+    }
+
+    async function scanWithVpe(agentId) {
+        // Ask Pi to capture photo, then send to VPE
+        const result = await sendCommand(agentId, 'capture_photo');
+        // The actual VPE analysis happens server-side when the image comes back
+        // For now this queues the command on the Pi
+        alert('Capture command sent to Pi. The agent will take a photo and you can analyze it in the Physics Engine.');
+    }
+
+    // ═══════════════════════════════════════════
+    //  INIT
+    // ═══════════════════════════════════════════
+
+    fetchAgents();
+    pollInterval = setInterval(fetchAgents, 2000);
+    </script>
+</body>
+</html>

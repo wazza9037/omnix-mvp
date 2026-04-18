@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OMNIX - Platform Metrics</title>
+  <style>
+    :root {
+      --bg: #0a1120;
+      --navy: #0D1B2A;
+      --teal: #00B4D8;
+      --light-teal: #90E0EF;
+      --ice: #CAF0F8;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --card-bg: #111b2e;
+      --card-border: #1e2d45;
+      --success: #10b981;
+      --purple: #8b5cf6;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow-x: hidden;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      scroll-behavior: smooth;
+    }
+
+    /* ==================== HEADER ==================== */
+    header {
+      background: linear-gradient(135deg, var(--navy) 0%, rgba(13, 27, 42, 0.8) 100%);
+      border-bottom: 1px solid var(--card-border);
+      padding: 2rem 0;
+      sticky: top;
+      z-index: 100;
+      animation: slideDown 0.6s ease-out;
+    }
+
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .header-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo-section {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .omnix-logo {
+      font-size: 2rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--teal), var(--light-teal));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -2px;
+    }
+
+    .header-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .header-nav {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+    }
+
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      transition: color 0.3s ease;
+      border-bottom: 2px solid transparent;
+    }
+
+    .nav-link:hover {
+      color: var(--teal);
+      border-bottom-color: var(--teal);
+    }
+
+    /* ==================== CONTAINER & SECTIONS ==================== */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 2rem;
+    }
+
+    section {
+      padding: 4rem 0;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    section:last-of-type {
+      border-bottom: none;
+    }
+
+    .section-title {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 3rem;
+      text-align: center;
+      color: var(--text);
+      position: relative;
+      display: inline-block;
+      width: 100%;
+    }
+
+    .section-title::after {
+      content: '';
+      position: absolute;
+      bottom: -0.5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 60px;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--teal), transparent);
+    }
+
+    /* ==================== SECTION 1: HERO STATS ==================== */
+    .hero-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 2rem 1.5rem;
+      text-align: center;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+      opacity: 0;
+      animation: fadeInUp 0.6s ease-out forwards;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .stat-card:nth-child(1) { animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { animation-delay: 0.2s; }
+    .stat-card:nth-child(3) { animation-delay: 0.3s; }
+    .stat-card:nth-child(4) { animation-delay: 0.4s; }
+    .stat-card:nth-child(5) { animation-delay: 0.5s; }
+    .stat-card:nth-child(6) { animation-delay: 0.6s; }
+
+    .stat-card:hover {
+      background: linear-gradient(135deg, rgba(0, 180, 216, 0.1), rgba(139, 92, 246, 0.1));
+      border-color: var(--teal);
+      transform: translateY(-8px);
+      box-shadow: 0 15px 40px rgba(0, 180, 216, 0.15);
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--teal), var(--purple), transparent);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .stat-card:hover::before {
+      opacity: 1;
+    }
+
+    .stat-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      display: block;
+    }
+
+    .stat-number {
+      font-size: 2.5rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--light-teal), var(--ice));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+      min-height: 3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stat-label {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+      font-weight: 500;
+    }
+
+    .stat-growth {
+      display: inline-block;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid var(--success);
+      color: var(--success);
+      padding: 0.4rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    /* ==================== SECTION 2: ARCHITECTURE ==================== */
+    .architecture-diagram {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 3rem 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2rem;
+      overflow-x: auto;
+    }
+
+    .arch-layer {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+
+    .arch-box {
+      background: var(--navy);
+      border: 2px solid var(--card-border);
+      border-radius: 8px;
+      padding: 1.5rem 1rem;
+      min-width: 140px;
+      text-align: center;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .arch-box:hover {
+      border-color: var(--teal);
+      box-shadow: 0 0 20px rgba(0, 180, 216, 0.3);
+      transform: scale(1.05);
+    }
+
+    .arch-box.frontend {
+      border-color: var(--teal);
+      background: rgba(0, 180, 216, 0.05);
+    }
+
+    .arch-box.backend {
+      border-color: var(--purple);
+      background: rgba(139, 92, 246, 0.05);
+    }
+
+    .arch-box.connector {
+      border-color: var(--success);
+      background: rgba(16, 185, 129, 0.05);
+    }
+
+    .arch-box.device {
+      border-color: var(--warning);
+      background: rgba(245, 158, 11, 0.05);
+    }
+
+    .arch-label {
+      font-weight: 600;
+      color: var(--text);
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .arch-stats {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .arch-arrow {
+      width: 40px;
+      height: 2px;
+      background: linear-gradient(90deg, var(--text-muted), var(--teal), var(--text-muted));
+      position: relative;
+    }
+
+    .arch-arrow::after {
+      content: '';
+      position: absolute;
+      right: -8px;
+      top: -4px;
+      width: 0;
+      height: 0;
+      border-left: 8px solid var(--teal);
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+    }
+
+    .arch-summary {
+      margin-top: 1rem;
+      padding-top: 2rem;
+      border-top: 1px solid var(--card-border);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      width: 100%;
+    }
+
+    .arch-summary-item {
+      text-align: center;
+    }
+
+    .arch-summary-number {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--teal);
+    }
+
+    .arch-summary-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 0.3rem;
+    }
+
+    /* ==================== SECTION 3: TECHNICAL STATS GRID ==================== */
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .tech-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 2rem;
+      border-top: 3px solid var(--teal);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+      opacity: 0;
+      animation: fadeInScale 0.6s ease-out forwards;
+    }
+
+    @keyframes fadeInScale {
+      from {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .tech-card:nth-child(1) { animation-delay: 0.1s; }
+    .tech-card:nth-child(2) { animation-delay: 0.2s; }
+    .tech-card:nth-child(3) { animation-delay: 0.3s; }
+    .tech-card:nth-child(4) { animation-delay: 0.4s; }
+    .tech-card:nth-child(5) { animation-delay: 0.5s; }
+    .tech-card:nth-child(6) { animation-delay: 0.6s; }
+    .tech-card:nth-child(7) { animation-delay: 0.7s; }
+    .tech-card:nth-child(8) { animation-delay: 0.8s; }
+    .tech-card:nth-child(9) { animation-delay: 0.9s; }
+
+    .tech-card:hover {
+      border-top-color: var(--purple);
+      box-shadow: 0 10px 30px rgba(0, 180, 216, 0.1);
+      transform: translateY(-4px);
+    }
+
+    .tech-card:hover::after {
+      animation: pulse 1.5s ease-in-out;
+    }
+
+    .tech-card::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(circle at center, rgba(0, 180, 216, 0.1), transparent);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0; }
+      50% { opacity: 1; }
+    }
+
+    .tech-number {
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: var(--light-teal);
+      margin-bottom: 0.5rem;
+    }
+
+    .tech-label {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* ==================== SECTION 4: FEATURE MATRIX ==================== */
+    .feature-matrix {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .feature-item {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.3s ease;
+    }
+
+    .feature-item:hover {
+      border-color: var(--teal);
+      background: rgba(0, 180, 216, 0.05);
+      transform: translateX(4px);
+    }
+
+    .feature-name {
+      font-weight: 600;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    .feature-badge {
+      padding: 0.4rem 1rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .badge-complete {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+      border: 1px solid var(--success);
+    }
+
+    .badge-planned {
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--warning);
+      border: 1px solid var(--warning);
+    }
+
+    /* ==================== SECTION 5: TECH STACK ==================== */
+    .tech-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .stack-category {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .stack-label {
+      font-weight: 600;
+      color: var(--light-teal);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .stack-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .badge {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      padding: 0.6rem 1.2rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      color: var(--text);
+    }
+
+    .badge:hover {
+      border-color: var(--teal);
+      background: rgba(0, 180, 216, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .badge.backend {
+      border-color: var(--purple);
+      color: var(--light-teal);
+    }
+
+    .badge.frontend {
+      border-color: var(--teal);
+      color: var(--light-teal);
+    }
+
+    .badge.infra {
+      border-color: var(--success);
+      color: var(--light-teal);
+    }
+
+    .badge.protocol {
+      border-color: var(--warning);
+      color: var(--light-teal);
+    }
+
+    /* ==================== SECTION 6: CTA ==================== */
+    .cta-section {
+      background: linear-gradient(135deg, rgba(0, 180, 216, 0.1), rgba(139, 92, 246, 0.1));
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 3rem 2rem;
+      text-align: center;
+      margin-top: 2rem;
+    }
+
+    .cta-title {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 2rem;
+      color: var(--text);
+    }
+
+    .cta-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .cta-btn {
+      padding: 0.9rem 2rem;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
+      cursor: pointer;
+      display: inline-block;
+    }
+
+    .cta-btn.primary {
+      background: linear-gradient(135deg, var(--teal), var(--light-teal));
+      color: var(--navy);
+      border-color: var(--teal);
+    }
+
+    .cta-btn.primary:hover {
+      box-shadow: 0 10px 30px rgba(0, 180, 216, 0.3);
+      transform: translateY(-3px);
+    }
+
+    .cta-btn.secondary {
+      background: transparent;
+      color: var(--text);
+      border-color: var(--card-border);
+    }
+
+    .cta-btn.secondary:hover {
+      border-color: var(--teal);
+      color: var(--teal);
+      box-shadow: 0 0 20px rgba(0, 180, 216, 0.2);
+    }
+
+    /* ==================== FOOTER ==================== */
+    footer {
+      background: var(--navy);
+      border-top: 1px solid var(--card-border);
+      padding: 2rem 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    /* ==================== RESPONSIVE ==================== */
+    @media (max-width: 768px) {
+      .header-content {
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .header-nav {
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .omnix-logo {
+        font-size: 1.5rem;
+      }
+
+      .header-title {
+        font-size: 1.2rem;
+      }
+
+      .hero-stats {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .tech-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .feature-matrix {
+        grid-template-columns: 1fr;
+      }
+
+      .arch-layer {
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .arch-arrow {
+        width: 2px;
+        height: 40px;
+        margin: 1rem 0;
+      }
+
+      .arch-arrow::after {
+        right: -4px;
+        top: auto;
+        bottom: -8px;
+        border-left: 4px solid var(--teal);
+        border-top: 8px solid transparent;
+        border-bottom: 0;
+      }
+
+      .cta-buttons {
+        flex-direction: column;
+      }
+
+      .cta-btn {
+        width: 100%;
+      }
+
+      section {
+        padding: 2rem 0;
+      }
+
+      .section-title {
+        font-size: 1.5rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 0 1rem;
+      }
+
+      .hero-stats {
+        grid-template-columns: 1fr;
+      }
+
+      .tech-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stat-card {
+        padding: 1.5rem 1rem;
+      }
+
+      .omnix-logo {
+        font-size: 1.3rem;
+      }
+
+      .section-title {
+        font-size: 1.3rem;
+        margin-bottom: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-content">
+      <div class="logo-section">
+        <div class="omnix-logo">OMNIX</div>
+        <div>
+          <div class="header-title">Platform Metrics</div>
+        </div>
+      </div>
+      <nav class="header-nav">
+        <a href="index.html" class="nav-link">← Back to Dashboard</a>
+        <a href="landing.html" class="nav-link">Landing</a>
+        <a href="demo.html" class="nav-link">Demo</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- HERO STATS SECTION -->
+  <section class="container">
+    <div class="section-title">Platform Overview</div>
+    <div class="hero-stats">
+      <div class="stat-card">
+        <span class="stat-icon">🤖</span>
+        <div class="stat-number" data-target="10">0</div>
+        <div class="stat-label">Robot Templates</div>
+        <div class="stat-growth">+24% growth</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">🧩</span>
+        <div class="stat-number" data-target="20" data-suffix="+">0</div>
+        <div class="stat-label">Node Types</div>
+        <div class="stat-growth">+18% growth</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">🔌</span>
+        <div class="stat-number" data-target="6">0</div>
+        <div class="stat-label">Connectors</div>
+        <div class="stat-growth">+50% growth</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">🏪</span>
+        <div class="stat-number" data-target="32">0</div>
+        <div class="stat-label">Marketplace Items</div>
+        <div class="stat-growth">+40% growth</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">✅</span>
+        <div class="stat-number" data-target="246" data-suffix="+">0</div>
+        <div class="stat-label">Tests Passing</div>
+        <div class="stat-growth">+15% growth</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">👥</span>
+        <div class="stat-number" data-target="Infinity">0</div>
+        <div class="stat-label">Robots Supported</div>
+        <div class="stat-growth">Unlimited</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ARCHITECTURE SECTION -->
+  <section class="container">
+    <div class="section-title">System Architecture</div>
+    <div class="architecture-diagram">
+      <div class="arch-layer">
+        <div class="arch-box frontend">
+          <div class="arch-label">Frontend</div>
+          <div class="arch-stats">4 HTML<br>~10K lines</div>
+        </div>
+        <div class="arch-arrow"></div>
+        <div class="arch-box backend">
+          <div class="arch-label">API Server</div>
+          <div class="arch-stats">FastAPI<br>45+ endpoints</div>
+        </div>
+        <div class="arch-arrow"></div>
+        <div style="display: flex; flex-direction: column; gap: 1rem; align-items: center;">
+          <div style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center;">
+            <div class="arch-box connector">
+              <div class="arch-label">Connectors</div>
+              <div class="arch-stats">MAVLink, ROS2<br>Serial, WiFi</div>
+            </div>
+            <div class="arch-box backend">
+              <div class="arch-label">Behavior Engine</div>
+              <div class="arch-stats">Decision Trees<br>State Machines</div>
+            </div>
+            <div class="arch-box backend">
+              <div class="arch-label">NLP Parser</div>
+              <div class="arch-stats">450 lines<br>3 files</div>
+            </div>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center;">
+            <div class="arch-box backend">
+              <div class="arch-label">Marketplace</div>
+              <div class="arch-stats">32 items<br>SQLite</div>
+            </div>
+            <div class="arch-box backend">
+              <div class="arch-label">Auth & RBAC</div>
+              <div class="arch-stats">JWT, API Key<br>OAuth 2.0</div>
+            </div>
+            <div class="arch-box backend">
+              <div class="arch-label">Simulation</div>
+              <div class="arch-stats">Real-time<br>Physics</div>
+            </div>
+          </div>
+        </div>
+        <div class="arch-arrow"></div>
+        <div class="arch-box device">
+          <div class="arch-label">Devices</div>
+          <div class="arch-stats">Any robot<br>Any platform</div>
+        </div>
+      </div>
+      <div class="arch-summary">
+        <div class="arch-summary-item">
+          <div class="arch-summary-number">114</div>
+          <div class="arch-summary-label">Python Files</div>
+        </div>
+        <div class="arch-summary-item">
+          <div class="arch-summary-number">~40K</div>
+          <div class="arch-summary-label">Total Lines</div>
+        </div>
+        <div class="arch-summary-item">
+          <div class="arch-summary-number">45+</div>
+          <div class="arch-summary-label">API Endpoints</div>
+        </div>
+        <div class="arch-summary-item">
+          <div class="arch-summary-number">8</div>
+          <div class="arch-summary-label">WebSocket Channels</div>
+        </div>
+        <div class="arch-summary-item">
+          <div class="arch-summary-number">5</div>
+          <div class="arch-summary-label">Docker Services</div>
+        </div>
+        <div class="arch-summary-item">
+          <div class="arch-summary-number">12</div>
+          <div class="arch-summary-label">DB Tables</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TECHNICAL STATS SECTION -->
+  <section class="container">
+    <div class="section-title">Technical Metrics</div>
+    <div class="tech-grid">
+      <div class="tech-card">
+        <div class="tech-number" data-target="40000" data-suffix="+">0</div>
+        <div class="tech-label">Lines of Code</div>
+      </div>
+      <div class="tech-card">
+        <div class="tech-number" data-target="114">0</div>
+        <div class="tech-label">Python Files</div>
+      </div>
+      <div class="tech-card">
+        <div class="tech-number" data-target="45" data-suffix="+">0</div>
+        <div class="tech-label">API Endpoints</div>
+      </div>
+      <div class="tech-card">
+        <div class="tech-number" data-target="8">0</div>
+        <div class="tech-label">WebSocket Channels</div>
+      </div>
+      <div class="tech-card">
+        <div class="tech-number" data-target="5">0</div>
+        <div class="tech-label">Docker Services</div>
+      </div>
+      <div class="tech-card">
+        <div class="tech-number" data-target="1">0</div>
+        <div class="tech-label">CI/CD Pipelines</div>
+      </div>
+      <div class="tech-card">
+        <div class="tech-number" data-target="3">0</div>
+        <div class="tech-label">Auth Methods</div>
+      </div>
+      <div class="tech-card">
+        <div class="tech-number" data-target="12">0</div>
+        <div class="tech-label">Database Tables</div>
+      </div>
+      <div class="tech-card">
+        <div class="tech-number" data-target="50" data-suffix="ms" data-prefix="&lt;">0</div>
+        <div class="tech-label">Response Time</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURE COMPLETENESS SECTION -->
+  <section class="container">
+    <div class="section-title">Feature Completeness Matrix</div>
+    <div class="feature-matrix">
+      <div class="feature-item">
+        <span class="feature-name">Device Management</span>
+        <span class="feature-badge badge-complete">✅ Complete</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-name">NLP Command Parser</span>
+        <span class="feature-badge badge-complete">✅ Complete</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-name">3D Visualization</span>
+        <span class="feature-badge badge-complete">✅ Complete</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-name">Digital Twin</span>
+        <span class="feature-badge badge-complete">✅ Complete</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-name">Behavior Trees</span>
+        <span class="feature-badge badge-complete">✅ Complete</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-name">Custom Robot Builder</span>
+        <span class="feature-badge badge-complete">✅ Complete</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-name">Marketplace</span>
+        <span class="feature-badge badge-complete">✅ Complete</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-name">Real-time Collaboration</span>
+        <span class="feature-badge badge-complete">✅ Complete</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-name">Authentication & RBAC</span>
+        <span class="feature-badge badge-complete">✅ Complete</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-name">CI/CD & Docker</span>
+        <span class="feature-badge badge-complete">✅ Complete</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-name">Landing Page & Demo</span>
+        <span class="feature-badge badge-complete">✅ Complete</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-name">Mobile App</span>
+        <span class="feature-badge badge-planned">🔜 Planned</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-name">Cloud Fleet Management</span>
+        <span class="feature-badge badge-planned">🔜 Planned</span>
+      </div>
+      <div class="feature-item">
+        <span class="feature-name">ML Model Training</span>
+        <span class="feature-badge badge-planned">🔜 Planned</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- TECH STACK SECTION -->
+  <section class="container">
+    <div class="section-title">Technology Stack</div>
+    <div class="tech-stack">
+      <div class="stack-category">
+        <div class="stack-label">Backend</div>
+        <div class="stack-badges">
+          <span class="badge backend">Python 3.10+</span>
+          <span class="badge backend">FastAPI</span>
+          <span class="badge backend">WebSocket</span>
+          <span class="badge backend">SQLite</span>
+          <span class="badge backend">Redis</span>
+        </div>
+      </div>
+      <div class="stack-category">
+        <div class="stack-label">Frontend</div>
+        <div class="stack-badges">
+          <span class="badge frontend">HTML5</span>
+          <span class="badge frontend">CSS3</span>
+          <span class="badge frontend">JavaScript</span>
+          <span class="badge frontend">Three.js</span>
+          <span class="badge frontend">Canvas</span>
+        </div>
+      </div>
+      <div class="stack-category">
+        <div class="stack-label">Infrastructure</div>
+        <div class="stack-badges">
+          <span class="badge infra">Docker</span>
+          <span class="badge infra">GitHub Actions</span>
+          <span class="badge infra">Nginx</span>
+          <span class="badge infra">Linux</span>
+        </div>
+      </div>
+      <div class="stack-category">
+        <div class="stack-label">Protocols & Integrations</div>
+        <div class="stack-badges">
+          <span class="badge protocol">MAVLink</span>
+          <span class="badge protocol">ROS2</span>
+          <span class="badge protocol">Serial</span>
+          <span class="badge protocol">WiFi</span>
+          <span class="badge protocol">MQTT</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA SECTION -->
+  <section class="container">
+    <div class="cta-section">
+      <h2 class="cta-title">See it in Action</h2>
+      <div class="cta-buttons">
+        <a href="index.html" class="cta-btn primary">→ Go to Dashboard</a>
+        <a href="demo.html" class="cta-btn secondary">Watch Demo</a>
+        <a href="landing.html" class="cta-btn secondary">View Landing</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="container">
+      <p>OMNIX MVP &copy; 2026 — Universal Robotics Control Platform</p>
+    </div>
+  </footer>
+
+  <script>
+    // Counter animation with easeOutExpo
+    function easeOutExpo(t) {
+      return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+    }
+
+    function animateCounters() {
+      const counters = document.querySelectorAll('[data-target]');
+
+      counters.forEach(counter => {
+        const target = counter.dataset.target;
+        const suffix = counter.dataset.suffix || '';
+        const prefix = counter.dataset.prefix || '';
+        const duration = 2000; // 2 seconds
+        const startTime = performance.now();
+
+        const animate = (currentTime) => {
+          const elapsed = currentTime - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+
+          if (target === 'Infinity') {
+            counter.textContent = prefix + '∞' + suffix;
+          } else {
+            const currentValue = Math.floor(parseInt(target) * easeOutExpo(progress));
+            counter.textContent = prefix + currentValue + suffix;
+          }
+
+          if (progress < 1) {
+            requestAnimationFrame(animate);
+          }
+        };
+
+        requestAnimationFrame(animate);
+      });
+    }
+
+    // Start animation when DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+      // Small delay to ensure smooth initial render
+      setTimeout(animateCounters, 100);
+    });
+
+    // Intersection Observer for fade-in animations
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = '1';
+        }
+      });
+    }, observerOptions);
+
+    // Observe tech cards and stat cards
+    document.querySelectorAll('.tech-card, .stat-card').forEach(el => {
+      observer.observe(el);
+    });
+
+    // Smooth scroll behavior
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    });
+
+    // Add staggered animation to architecture boxes
+    const archBoxes = document.querySelectorAll('.arch-box');
+    archBoxes.forEach((box, index) => {
+      box.style.animation = `fadeInUp 0.6s ease-out ${0.1 + index * 0.1}s backwards`;
+    });
+
+    // Keyboard navigation enhancement
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Home') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      if (e.key === 'End') {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      }
+    });
+  </script>
+
+</body>
+</html>

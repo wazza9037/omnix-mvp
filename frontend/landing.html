@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OMNIX — Universal Robotics Control Platform</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #0a1120;
+            --navy: #0D1B2A;
+            --teal: #00B4D8;
+            --light-teal: #90E0EF;
+            --ice: #CAF0F8;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --card-bg: #111b2e;
+            --card-border: #1e2d45;
+            --success: #10b981;
+            --purple: #8b5cf6;
+            --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* ==================== NAVBAR ==================== */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: rgba(10, 17, 32, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(30, 45, 69, 0.5);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: 0.15em;
+            background: linear-gradient(135deg, var(--teal), var(--light-teal));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--teal);
+        }
+
+        .cta-button {
+            padding: 0.6rem 1.5rem;
+            background: linear-gradient(135deg, var(--teal), var(--light-teal));
+            color: var(--bg);
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            font-size: 0.95rem;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 180, 216, 0.3);
+        }
+
+        .cta-button-outline {
+            padding: 0.6rem 1.5rem;
+            background: transparent;
+            color: var(--teal);
+            border: 1.5px solid var(--teal);
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+        }
+
+        .cta-button-outline:hover {
+            background: rgba(0, 180, 216, 0.1);
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+            .navbar {
+                padding: 1rem;
+            }
+        }
+
+        /* ==================== HERO SECTION ==================== */
+        .hero {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4rem 2rem;
+            gap: 3rem;
+            overflow: hidden;
+        }
+
+        .hero-content {
+            flex: 1;
+            z-index: 10;
+            max-width: 600px;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 3rem;
+        }
+
+        .hero-buttons .cta-button,
+        .hero-buttons .cta-button-outline {
+            padding: 0.8rem 2rem;
+            font-size: 1rem;
+        }
+
+        .stats-bar {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--card-border);
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stat-item strong {
+            color: var(--teal);
+            font-weight: 700;
+        }
+
+        .hero-visualization {
+            flex: 1;
+            height: 500px;
+            position: relative;
+            min-width: 300px;
+        }
+
+        @media (max-width: 1024px) {
+            .hero {
+                flex-direction: column;
+                padding: 2rem;
+            }
+
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero-visualization {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hero {
+                padding: 2rem 1rem;
+                min-height: auto;
+                padding-top: 2rem;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+            }
+
+            .hero-visualization {
+                height: 300px;
+            }
+
+            .stats-bar {
+                gap: 1rem;
+                font-size: 0.85rem;
+            }
+        }
+
+        /* ==================== FEATURES SECTION ==================== */
+        .features {
+            padding: 6rem 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .features h2 {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            font-weight: 800;
+        }
+
+        .features-subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            margin-bottom: 4rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .feature-card:hover {
+            border-color: var(--teal);
+            transform: translateY(-8px);
+            box-shadow: 0 15px 40px rgba(0, 180, 216, 0.15);
+        }
+
+        .feature-icon {
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 180, 216, 0.1);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            color: var(--teal);
+            font-size: 1.5rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+            font-weight: 700;
+        }
+
+        .feature-card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 1024px) {
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .features {
+                padding: 3rem 1rem;
+            }
+
+            .features h2 {
+                font-size: 1.8rem;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ==================== HOW IT WORKS ==================== */
+        .how-it-works {
+            padding: 6rem 2rem;
+            background: linear-gradient(180deg, rgba(0, 180, 216, 0.05) 0%, transparent 100%);
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .how-it-works h2 {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 4rem;
+            font-weight: 800;
+        }
+
+        .steps-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            position: relative;
+        }
+
+        .steps-container::before {
+            content: '';
+            position: absolute;
+            top: 60px;
+            left: 5%;
+            right: 5%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--teal), transparent);
+            z-index: 0;
+        }
+
+        .step {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+        }
+
+        .step-badge {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 2rem;
+            background: linear-gradient(135deg, var(--teal), var(--light-teal));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--bg);
+            box-shadow: 0 20px 40px rgba(0, 180, 216, 0.2);
+        }
+
+        .step h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+
+        .step p {
+            color: var(--text-muted);
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 1024px) {
+            .steps-container {
+                grid-template-columns: 1fr;
+                gap: 3rem;
+            }
+
+            .steps-container::before {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .how-it-works {
+                padding: 3rem 1rem;
+            }
+
+            .how-it-works h2 {
+                font-size: 1.8rem;
+            }
+
+            .step-badge {
+                width: 80px;
+                height: 80px;
+                font-size: 2rem;
+                margin-bottom: 1rem;
+            }
+
+            .step h3 {
+                font-size: 1.2rem;
+            }
+        }
+
+        /* ==================== TESTIMONIALS ==================== */
+        .testimonials {
+            padding: 6rem 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .testimonials h2 {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            font-weight: 800;
+        }
+
+        .testimonials-subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 4rem;
+        }
+
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+        }
+
+        .testimonial-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stars {
+            color: #fbbf24;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+
+        .testimonial-text {
+            color: var(--text);
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+            flex-grow: 1;
+            line-height: 1.6;
+            font-style: italic;
+        }
+
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .author-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--teal), var(--light-teal));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: var(--bg);
+            font-size: 1.1rem;
+        }
+
+        .author-info h4 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .author-info p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 1024px) {
+            .testimonials-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .testimonials {
+                padding: 3rem 1rem;
+            }
+
+            .testimonials h2 {
+                font-size: 1.8rem;
+            }
+
+            .testimonials-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ==================== PRICING ==================== */
+        .pricing {
+            padding: 6rem 2rem;
+            background: linear-gradient(180deg, transparent, rgba(0, 180, 216, 0.05));
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .pricing h2 {
+            font-size: 2.5rem;
+            text-align: center;
+            margin-bottom: 1rem;
+            font-weight: 800;
+        }
+
+        .pricing-subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 4rem;
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+        }
+
+        .pricing-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .pricing-card.popular {
+            border-color: var(--teal);
+            box-shadow: 0 20px 40px rgba(0, 180, 216, 0.2);
+            transform: scale(1.05);
+        }
+
+        .pricing-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, var(--teal), var(--light-teal));
+            color: var(--bg);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 700;
+        }
+
+        .pricing-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+            margin-top: 0.5rem;
+        }
+
+        .pricing-price {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--teal);
+            margin-bottom: 0.5rem;
+        }
+
+        .pricing-period {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .pricing-features {
+            list-style: none;
+            margin-bottom: 2rem;
+            flex-grow: 1;
+        }
+
+        .pricing-features li {
+            color: var(--text-muted);
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--card-border);
+            font-size: 0.95rem;
+        }
+
+        .pricing-features li::before {
+            content: '✓ ';
+            color: var(--success);
+            font-weight: 700;
+            margin-right: 0.5rem;
+        }
+
+        .pricing-features li:last-child {
+            border-bottom: none;
+        }
+
+        .pricing-cta {
+            width: 100%;
+            padding: 0.8rem 1.5rem;
+            background: transparent;
+            color: var(--teal);
+            border: 1.5px solid var(--teal);
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+        }
+
+        .pricing-card.popular .pricing-cta {
+            background: linear-gradient(135deg, var(--teal), var(--light-teal));
+            color: var(--bg);
+            border: none;
+        }
+
+        .pricing-cta:hover {
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 1024px) {
+            .pricing-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .pricing-card.popular {
+                transform: scale(1);
+                grid-column: 1 / -1;
+                max-width: 500px;
+                margin: 0 auto;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .pricing {
+                padding: 3rem 1rem;
+            }
+
+            .pricing h2 {
+                font-size: 1.8rem;
+            }
+
+            .pricing-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .pricing-card.popular {
+                grid-column: 1;
+            }
+        }
+
+        /* ==================== CTA BANNER ==================== */
+        .cta-banner {
+            padding: 4rem 2rem;
+            background: linear-gradient(135deg, rgba(0, 180, 216, 0.1), rgba(139, 92, 246, 0.1));
+            border-top: 1px solid var(--card-border);
+            border-bottom: 1px solid var(--card-border);
+            text-align: center;
+            margin: 4rem 0;
+        }
+
+        .cta-banner h2 {
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            font-weight: 800;
+        }
+
+        .cta-banner .cta-button {
+            padding: 1rem 2.5rem;
+            font-size: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .cta-banner {
+                padding: 2rem 1rem;
+                margin: 2rem 0;
+            }
+
+            .cta-banner h2 {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* ==================== FOOTER ==================== */
+        .footer {
+            background: var(--navy);
+            border-top: 1px solid var(--card-border);
+            padding: 4rem 2rem 2rem;
+        }
+
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
+
+        .footer-section h3 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 1.5rem;
+            color: var(--text);
+        }
+
+        .footer-section ul {
+            list-style: none;
+        }
+
+        .footer-section ul li {
+            margin-bottom: 0.75rem;
+        }
+
+        .footer-section a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s ease;
+        }
+
+        .footer-section a:hover {
+            color: var(--teal);
+        }
+
+        .footer-bottom {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding-top: 2rem;
+            border-top: 1px solid var(--card-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .footer-bottom p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .social-icons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .social-icons a {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(0, 180, 216, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--teal);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            font-weight: 600;
+        }
+
+        .social-icons a:hover {
+            background: rgba(0, 180, 216, 0.2);
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 1024px) {
+            .footer-content {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .footer-content {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+
+            .footer-bottom {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+
+        /* ==================== ANIMATIONS ==================== */
+        .fade-in-up {
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeInUp 0.6s ease forwards;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .counter {
+            font-weight: 700;
+            color: var(--teal);
+        }
+    </style>
+</head>
+<body>
+    <!-- ==================== NAVBAR ==================== -->
+    <nav class="navbar">
+        <div class="logo">OMNIX</div>
+        <ul class="nav-links">
+            <li><a href="#features">Features</a></li>
+            <li><a href="#how-it-works">How It Works</a></li>
+            <li><a href="#pricing">Pricing</a></li>
+            <li><a href="#demo">Demo</a></li>
+        </ul>
+        <button class="cta-button">Get Started Free</button>
+    </nav>
+
+    <!-- ==================== HERO SECTION ==================== -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>One App. Any Robot. Zero Limits.</h1>
+            <p>The universal platform for building, commanding, and iterating on any robot — from hobby drones to industrial arms.</p>
+            <div class="hero-buttons">
+                <button class="cta-button">Get Started Free</button>
+                <button class="cta-button-outline">Watch Demo</button>
+            </div>
+            <div class="stats-bar">
+                <div class="stat-item"><strong class="counter" data-target="6">0</strong> Connectors</div>
+                <div class="stat-item"><strong class="counter" data-target="10">0</strong> Templates</div>
+                <div class="stat-item"><strong class="counter" data-target="20">0</strong> Node Types</div>
+                <div class="stat-item"><strong>Real-time Collab</strong></div>
+            </div>
+        </div>
+        <div class="hero-visualization" id="hero-canvas"></div>
+    </section>
+
+    <!-- ==================== FEATURES SECTION ==================== -->
+    <section class="features" id="features">
+        <h2>Everything you need to control any robot</h2>
+        <p class="features-subtitle">Comprehensive tools designed for roboticists, by roboticists</p>
+        <div class="features-grid">
+            <div class="feature-card fade-in-up">
+                <div class="feature-icon">💬</div>
+                <h3>NLP Command Bar</h3>
+                <p>Type natural language commands. "Fly a square at 3m" just works.</p>
+            </div>
+            <div class="feature-card fade-in-up">
+                <div class="feature-icon">🔄</div>
+                <h3>Digital Twin</h3>
+                <p>See sim vs real side by side. Spot divergence before it matters.</p>
+            </div>
+            <div class="feature-card fade-in-up">
+                <div class="feature-icon">🗺️</div>
+                <h3>Visual Mission Planner</h3>
+                <p>Drag-and-drop behavior trees. Complex missions, zero code.</p>
+            </div>
+            <div class="feature-card fade-in-up">
+                <div class="feature-icon">🔧</div>
+                <h3>Custom Robot Builder</h3>
+                <p>Assemble any robot from parts. Define physics, export configs.</p>
+            </div>
+            <div class="feature-card fade-in-up">
+                <div class="feature-icon">🛒</div>
+                <h3>Marketplace</h3>
+                <p>Share and discover templates, behaviors, and connectors.</p>
+            </div>
+            <div class="feature-card fade-in-up">
+                <div class="feature-icon">👥</div>
+                <h3>Real-time Collaboration</h3>
+                <p>Multiple engineers, one robot. Live cursors, shared state.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== HOW IT WORKS ==================== -->
+    <section class="how-it-works" id="how-it-works">
+        <h2>From zero to flying in 3 steps</h2>
+        <div class="steps-container">
+            <div class="step fade-in-up">
+                <div class="step-badge">1</div>
+                <h3>Scan or Build</h3>
+                <p>Connect a real robot or build one from templates.</p>
+            </div>
+            <div class="step fade-in-up">
+                <div class="step-badge">2</div>
+                <h3>Command</h3>
+                <p>Use natural language or visual trees to create missions.</p>
+            </div>
+            <div class="step fade-in-up">
+                <div class="step-badge">3</div>
+                <h3>Iterate</h3>
+                <p>Run, compare, learn. Every run makes your robot smarter.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== TESTIMONIALS ==================== -->
+    <section class="testimonials">
+        <h2>Trusted by roboticists</h2>
+        <p class="testimonials-subtitle">Real feedback from real teams</p>
+        <div class="testimonials-grid">
+            <div class="testimonial-card fade-in-up">
+                <div class="stars">★★★★★</div>
+                <p class="testimonial-text">"OMNIX replaced 4 different tools for our drone fleet. The ROI is immediate."</p>
+                <div class="testimonial-author">
+                    <div class="author-avatar">AR</div>
+                    <div class="author-info">
+                        <h4>Alex R.</h4>
+                        <p>Robotics Engineer</p>
+                    </div>
+                </div>
+            </div>
+            <div class="testimonial-card fade-in-up">
+                <div class="stars">★★★★★</div>
+                <p class="testimonial-text">"The NLP command bar is magic. My team went from Python scripts to voice commands in a day."</p>
+                <div class="testimonial-author">
+                    <div class="author-avatar">SK</div>
+                    <div class="author-info">
+                        <h4>Sarah K.</h4>
+                        <p>CTO at DroneOps</p>
+                    </div>
+                </div>
+            </div>
+            <div class="testimonial-card fade-in-up">
+                <div class="stars">★★★★★</div>
+                <p class="testimonial-text">"Finally, a platform that treats every robot the same. We run arms, drones, and rovers from one dashboard."</p>
+                <div class="testimonial-author">
+                    <div class="author-avatar">MW</div>
+                    <div class="author-info">
+                        <h4>Marcus W.</h4>
+                        <p>Hardware Lead</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== PRICING ==================== -->
+    <section class="pricing" id="pricing">
+        <h2>Simple, transparent pricing</h2>
+        <p class="pricing-subtitle">Pick the plan that fits your team</p>
+        <div class="pricing-grid">
+            <div class="pricing-card fade-in-up">
+                <h3>Free</h3>
+                <div class="pricing-price">$0<span style="font-size: 1.2rem;">/mo</span></div>
+                <p class="pricing-period">Perfect to get started</p>
+                <ul class="pricing-features">
+                    <li>3 robots</li>
+                    <li>Community support</li>
+                    <li>Basic templates</li>
+                    <li>Public sharing</li>
+                </ul>
+                <button class="pricing-cta">Get Started</button>
+            </div>
+
+            <div class="pricing-card popular fade-in-up">
+                <div class="pricing-badge">Most Popular</div>
+                <h3>Pro</h3>
+                <div class="pricing-price">$29<span style="font-size: 1.2rem;">/mo</span></div>
+                <p class="pricing-period">For growing teams</p>
+                <ul class="pricing-features">
+                    <li>Unlimited robots</li>
+                    <li>NLP commands</li>
+                    <li>Digital twin</li>
+                    <li>Priority support</li>
+                </ul>
+                <button class="pricing-cta">Start Free Trial</button>
+            </div>
+
+            <div class="pricing-card fade-in-up">
+                <h3>Team</h3>
+                <div class="pricing-price">$99<span style="font-size: 1.2rem;">/mo</span></div>
+                <p class="pricing-period">For serious makers</p>
+                <ul class="pricing-features">
+                    <li>Everything in Pro</li>
+                    <li>Real-time collaboration</li>
+                    <li>Team workspaces</li>
+                    <li>SSO & compliance</li>
+                </ul>
+                <button class="pricing-cta">Start Free Trial</button>
+            </div>
+
+            <div class="pricing-card fade-in-up">
+                <h3>Enterprise</h3>
+                <div class="pricing-price">Custom</div>
+                <p class="pricing-period">For scale</p>
+                <ul class="pricing-features">
+                    <li>Dedicated support</li>
+                    <li>On-prem deployment</li>
+                    <li>Custom connectors</li>
+                    <li>SLA guarantee</li>
+                </ul>
+                <button class="pricing-cta">Contact Sales</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== CTA BANNER ==================== -->
+    <section class="cta-banner">
+        <h2>Ready to control any robot?</h2>
+        <button class="cta-button">Get Started Free</button>
+    </section>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h3>Product</h3>
+                <ul>
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#pricing">Pricing</a></li>
+                    <li><a href="#">Docs</a></li>
+                    <li><a href="#">API</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Resources</h3>
+                <ul>
+                    <li><a href="#">Templates</a></li>
+                    <li><a href="#">Marketplace</a></li>
+                    <li><a href="#">Community</a></li>
+                    <li><a href="#">Blog</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Company</h3>
+                <ul>
+                    <li><a href="#">About</a></li>
+                    <li><a href="#">Careers</a></li>
+                    <li><a href="#">Contact</a></li>
+                    <li><a href="#">Press</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h3>Legal</h3>
+                <ul>
+                    <li><a href="#">Privacy Policy</a></li>
+                    <li><a href="#">Terms of Service</a></li>
+                    <li><a href="#">Security</a></li>
+                    <li><a href="#">Compliance</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2026 OMNIX. Built for roboticists, by roboticists.</p>
+            <div class="social-icons">
+                <a href="#" title="Twitter">𝕏</a>
+                <a href="#" title="GitHub">⚙</a>
+                <a href="#" title="Discord">◉</a>
+                <a href="#" title="LinkedIn">in</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // ==================== THREE.JS HERO VISUALIZATION ====================
+        function initHeroVisualization() {
+            const container = document.getElementById('hero-canvas');
+            if (!container) return;
+
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            // Scene setup
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+
+            renderer.setSize(width, height);
+            renderer.setClearColor(0x0a1120, 0);
+            container.appendChild(renderer.domElement);
+
+            camera.position.z = 3;
+
+            // Create quadcopter drone geometry
+            const droneGroup = new THREE.Group();
+
+            // Central body
+            const bodyGeom = new THREE.BoxGeometry(0.3, 0.2, 0.3);
+            const bodyMat = new THREE.MeshBasicMaterial({
+                color: 0x00B4D8,
+                wireframe: true,
+                linewidth: 2
+            });
+            const body = new THREE.Mesh(bodyGeom, bodyMat);
+            droneGroup.add(body);
+
+            // Arms (4 arms with rotors)
+            const armPositions = [
+                { x: 0.6, y: 0.2, z: 0.6 },
+                { x: -0.6, y: 0.2, z: 0.6 },
+                { x: 0.6, y: 0.2, z: -0.6 },
+                { x: -0.6, y: 0.2, z: -0.6 }
+            ];
+
+            const rotors = [];
+            armPositions.forEach((pos, idx) => {
+                // Arm
+                const armGeom = new THREE.BufferGeometry();
+                const armVerts = new Float32Array([
+                    0, 0, 0,
+                    pos.x, pos.y, pos.z
+                ]);
+                armGeom.setAttribute('position', new THREE.BufferAttribute(armVerts, 3));
+                const armMat = new THREE.LineBasicMaterial({ color: 0x90E0EF, linewidth: 2 });
+                const arm = new THREE.Line(armGeom, armMat);
+                droneGroup.add(arm);
+
+                // Rotor (spinning circle)
+                const rotorGeom = new THREE.BufferGeometry();
+                const segments = 32;
+                const rotorVerts = [];
+                for (let i = 0; i <= segments; i++) {
+                    const angle = (i / segments) * Math.PI * 2;
+                    rotorVerts.push(
+                        Math.cos(angle) * 0.15,
+                        0,
+                        Math.sin(angle) * 0.15
+                    );
+                }
+                rotorGeom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(rotorVerts), 3));
+                const rotorMat = new THREE.LineBasicMaterial({ color: 0x00B4D8, linewidth: 2 });
+                const rotor = new THREE.Line(rotorGeom, rotorMat);
+                rotor.position.set(pos.x, pos.y, pos.z);
+                droneGroup.add(rotor);
+                rotors.push(rotor);
+            });
+
+            // Add some glow lines for aesthetics
+            const glowGeom = new THREE.BufferGeometry();
+            const glowVerts = new Float32Array(armPositions.length * 3);
+            armPositions.forEach((pos, idx) => {
+                glowVerts[idx * 3] = pos.x;
+                glowVerts[idx * 3 + 1] = pos.y;
+                glowVerts[idx * 3 + 2] = pos.z;
+            });
+            const glowMat = new THREE.PointsMaterial({
+                color: 0x90E0EF,
+                size: 0.1,
+                sizeAttenuation: true
+            });
+            const glowPoints = new THREE.Points(glowGeom, glowMat);
+            droneGroup.add(glowPoints);
+
+            scene.add(droneGroup);
+
+            // Animation loop
+            const animate = () => {
+                requestAnimationFrame(animate);
+
+                // Rotate drone
+                droneGroup.rotation.x += 0.003;
+                droneGroup.rotation.y += 0.005;
+                droneGroup.rotation.z += 0.002;
+
+                // Spin rotors
+                rotors.forEach((rotor, idx) => {
+                    rotor.rotation.y += 0.1 * (idx % 2 === 0 ? 1 : -1);
+                });
+
+                renderer.render(scene, camera);
+            };
+
+            animate();
+
+            // Handle window resize
+            const handleResize = () => {
+                const newWidth = container.clientWidth;
+                const newHeight = container.clientHeight;
+                camera.aspect = newWidth / newHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(newWidth, newHeight);
+            };
+
+            window.addEventListener('resize', handleResize);
+        }
+
+        // ==================== INTERSECTION OBSERVER FOR ANIMATIONS ====================
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.animation = 'fadeInUp 0.6s ease forwards';
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, observerOptions);
+
+        // Observe all fade-in-up elements
+        document.querySelectorAll('.fade-in-up').forEach(el => {
+            observer.observe(el);
+        });
+
+        // ==================== STATS COUNTER ANIMATION ====================
+        const counterObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting && !entry.target.classList.contains('counted')) {
+                    entry.target.classList.add('counted');
+                    const counters = document.querySelectorAll('.counter');
+
+                    counters.forEach(counter => {
+                        const target = parseInt(counter.getAttribute('data-target'));
+                        let current = 0;
+                        const increment = Math.ceil(target / 30);
+                        const timer = setInterval(() => {
+                            current += increment;
+                            if (current >= target) {
+                                counter.textContent = target;
+                                clearInterval(timer);
+                            } else {
+                                counter.textContent = current;
+                            }
+                        }, 30);
+                    });
+                }
+            });
+        }, { threshold: 0.5 });
+
+        const statsBar = document.querySelector('.stats-bar');
+        if (statsBar) {
+            counterObserver.observe(statsBar);
+        }
+
+        // ==================== SMOOTH SCROLL BEHAVIOR ====================
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', (e) => {
+                const href = anchor.getAttribute('href');
+                if (href !== '#' && document.querySelector(href)) {
+                    e.preventDefault();
+                    document.querySelector(href).scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // ==================== PARALLAX ON HERO TEXT ====================
+        window.addEventListener('scroll', () => {
+            const heroContent = document.querySelector('.hero-content');
+            if (heroContent) {
+                const scrollY = window.scrollY;
+                heroContent.style.transform = `translateY(${scrollY * 0.5}px)`;
+            }
+        });
+
+        // ==================== INITIALIZE ====================
+        window.addEventListener('load', initHeroVisualization);
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initHeroVisualization);
+        } else {
+            initHeroVisualization();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OMNIX Demo — Universal Robotics Control</title>
+    <style>
+        :root {
+            --bg: #0a1120;
+            --navy: #0D1B2A;
+            --teal: #00B4D8;
+            --light-teal: #90E0EF;
+            --ice: #CAF0F8;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --card-bg: #111b2e;
+            --card-border: #1e2d45;
+            --success: #10b981;
+            --purple: #8b5cf6;
+            --accent-red: #ff6b6b;
+            --accent-green: #00d98e;
+            --accent-blue: #4a9eff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--bg) 0%, var(--navy) 100%);
+            color: var(--text);
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* === HEADER === */
+        .header {
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .header h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .header a {
+            color: var(--teal);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+
+        .header a:hover {
+            color: var(--light-teal);
+        }
+
+        /* === PROGRESS BAR === */
+        .progress-bar {
+            height: 2px;
+            background: linear-gradient(90deg, var(--teal) 0%, var(--light-teal) 100%);
+            transform-origin: left;
+            animation: progressFill 0.6s ease-out;
+        }
+
+        @keyframes progressFill {
+            from { transform: scaleX(0); }
+            to { transform: scaleX(var(--progress, 1)); }
+        }
+
+        /* === MAIN STAGE === */
+        .stage {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .stage-content {
+            width: 90%;
+            max-width: 900px;
+            height: 85%;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 3rem;
+            position: relative;
+            animation: fadeIn 0.6s ease-out;
+            box-shadow: 0 20px 60px rgba(0, 180, 216, 0.1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .step-content {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.6s ease-out;
+        }
+
+        .step-content.active {
+            display: flex;
+            opacity: 1;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%;
+        }
+
+        /* === FOOTER CONTROLS === */
+        .footer {
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid var(--card-border);
+            gap: 2rem;
+        }
+
+        .footer-left {
+            flex: 1;
+        }
+
+        .footer-right {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        /* === NARRATION CARD === */
+        .narration-card {
+            background: rgba(17, 27, 46, 0.8);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 1.25rem;
+            min-height: 140px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .step-number {
+            font-size: 0.75rem;
+            color: var(--teal);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .step-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--light-teal);
+        }
+
+        .step-description {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            min-height: 2.8em;
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1em;
+            background: var(--teal);
+            margin-left: 2px;
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
+        }
+
+        /* === BUTTONS === */
+        .btn {
+            padding: 0.6rem 1.2rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: var(--teal);
+            color: var(--bg);
+        }
+
+        .btn-primary:hover {
+            background: var(--light-teal);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 180, 216, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--card-bg);
+            color: var(--text);
+            border: 1px solid var(--card-border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--teal);
+            color: var(--teal);
+        }
+
+        .btn-small {
+            padding: 0.5rem 0.8rem;
+            font-size: 0.85rem;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* === STEP DOTS === */
+        .step-dots {
+            display: flex;
+            gap: 0.6rem;
+            align-items: center;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--card-border);
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid transparent;
+        }
+
+        .dot:hover {
+            background: var(--text-muted);
+            transform: scale(1.2);
+        }
+
+        .dot.active {
+            background: var(--teal);
+            width: 24px;
+            border-radius: 4px;
+        }
+
+        /* === AUTO-PLAY TOGGLE === */
+        .autoplay-btn {
+            position: relative;
+            width: 48px;
+            height: 48px;
+            padding: 0;
+            border-radius: 50%;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1.2rem;
+        }
+
+        .autoplay-btn:hover {
+            border-color: var(--teal);
+            color: var(--teal);
+        }
+
+        .autoplay-btn.playing {
+            border-color: var(--teal);
+            color: var(--teal);
+        }
+
+        .autoplay-ring {
+            position: absolute;
+            inset: 2px;
+            border: 2px solid transparent;
+            border-top-color: var(--teal);
+            border-right-color: var(--teal);
+            border-radius: 50%;
+            opacity: 0;
+            animation: none;
+        }
+
+        .autoplay-btn.playing .autoplay-ring {
+            animation: spin 5s linear infinite;
+            opacity: 1;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* === RESPONSIVE === */
+        @media (max-width: 1024px) {
+            .desktop-only {
+                display: none;
+            }
+
+            .mobile-warning {
+                position: fixed;
+                bottom: 1rem;
+                left: 50%;
+                transform: translateX(-50%);
+                background: var(--purple);
+                color: var(--text);
+                padding: 0.75rem 1.5rem;
+                border-radius: 6px;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* === STEP CONTENT SPECIFIC STYLES === */
+
+        /* Step 1: Robot Library */
+        .robot-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .robot-card {
+            background: var(--navy);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .robot-card:hover {
+            border-color: var(--teal);
+            transform: translateY(-4px);
+        }
+
+        .robot-card.selected {
+            border: 2px solid var(--teal);
+            background: rgba(0, 180, 216, 0.1);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(0, 180, 216, 0.4); }
+            50% { box-shadow: 0 0 0 10px rgba(0, 180, 216, 0); }
+        }
+
+        .robot-icon {
+            font-size: 3rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .robot-name {
+            font-weight: 600;
+            color: var(--light-teal);
+            margin-bottom: 0.5rem;
+        }
+
+        .robot-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Step 2: Custom Builder */
+        .builder-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            height: 100%;
+        }
+
+        .builder-parts {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .part-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: var(--navy);
+            border: 1px solid var(--card-border);
+            border-radius: 6px;
+            font-size: 0.95rem;
+        }
+
+        .part-item input[type="checkbox"] {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+            accent-color: var(--teal);
+        }
+
+        .builder-preview {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--navy);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .drone-wireframe {
+            width: 120px;
+            height: 120px;
+            position: relative;
+            margin-bottom: 2rem;
+        }
+
+        .rotor {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: var(--teal);
+            border-radius: 50%;
+            opacity: 0.6;
+            animation: rotate 2s linear infinite;
+        }
+
+        .rotor:nth-child(1) { top: 0; left: 0; }
+        .rotor:nth-child(2) { top: 0; right: 0; }
+        .rotor:nth-child(3) { bottom: 0; left: 0; }
+        .rotor:nth-child(4) { bottom: 0; right: 0; animation-direction: reverse; }
+
+        .rotor.pulse-1 { animation: rotatePulse 2s ease-in-out infinite; }
+        .rotor.pulse-2 { animation: rotatePulse 2s ease-in-out infinite 0.5s; }
+        .rotor.pulse-3 { animation: rotatePulse 2s ease-in-out infinite 1s; }
+        .rotor.pulse-4 { animation: rotatePulse 2s ease-in-out infinite 1.5s; }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes rotatePulse {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.2) rotate(180deg); }
+        }
+
+        .drone-body {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            background: var(--light-teal);
+            border-radius: 4px;
+            z-index: 10;
+        }
+
+        .slider-container {
+            width: 100%;
+            text-align: center;
+        }
+
+        .slider-container label {
+            display: block;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            color: var(--text-muted);
+        }
+
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--card-border);
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--teal);
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 180, 216, 0.5);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--teal);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(0, 180, 216, 0.5);
+        }
+
+        .slider-value {
+            display: block;
+            margin-top: 0.75rem;
+            font-size: 1.1rem;
+            color: var(--teal);
+            font-weight: 600;
+        }
+
+        /* Step 3: NLP Command */
+        .nlp-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            height: 100%;
+        }
+
+        .command-input-wrapper {
+            background: var(--navy);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            color: var(--teal);
+            min-height: 60px;
+            position: relative;
+        }
+
+        .command-text {
+            display: inline;
+            color: var(--light-teal);
+        }
+
+        .plan-preview {
+            background: var(--navy);
+            border: 1px solid var(--success);
+            border-radius: 8px;
+            padding: 1rem;
+            opacity: 0;
+            animation: slideIn 0.6s ease-out 2.5s forwards;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .plan-title {
+            font-size: 0.85rem;
+            color: var(--success);
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .checkmark {
+            color: var(--success);
+        }
+
+        .plan-steps {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .plan-step {
+            background: var(--card-bg);
+            padding: 0.5rem 0.75rem;
+            border-radius: 4px;
+            border-left: 2px solid var(--teal);
+        }
+
+        /* Step 4: 3D Path */
+        .canvas-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            background: var(--navy);
+            border-radius: 8px;
+            border: 1px solid var(--card-border);
+        }
+
+        #pathCanvas {
+            display: block;
+        }
+
+        /* Step 5: Digital Twin */
+        .twin-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            height: 100%;
+        }
+
+        .twin-panel {
+            background: var(--navy);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .twin-label {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: var(--teal);
+            letter-spacing: 1px;
+        }
+
+        .twin-indicator {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--teal);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 2rem;
+            box-shadow: 0 0 30px rgba(0, 180, 216, 0.3);
+        }
+
+        .twin-path {
+            width: 150px;
+            height: 150px;
+            border: 2px dashed var(--card-border);
+            border-radius: 8px;
+            position: relative;
+            margin-bottom: 2rem;
+        }
+
+        .twin-dot {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: var(--teal);
+            border-radius: 50%;
+            animation: followPath 8s ease-in-out infinite;
+        }
+
+        @keyframes followPath {
+            0% { left: 20%; top: 20%; }
+            25% { left: 80%; top: 20%; }
+            50% { left: 80%; top: 80%; }
+            75% { left: 20%; top: 80%; }
+            100% { left: 20%; top: 20%; }
+        }
+
+        .twin-dot.lagged {
+            animation: followPathLagged 8s ease-in-out infinite;
+            background: var(--accent-red);
+        }
+
+        @keyframes followPathLagged {
+            0% { left: 20%; top: 20%; }
+            26% { left: 80%; top: 20%; }
+            51% { left: 80%; top: 80%; }
+            76% { left: 20%; top: 80%; }
+            100% { left: 20%; top: 20%; }
+        }
+
+        .divergence-meter {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 6px;
+            padding: 1rem;
+            width: 100%;
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        .divergence-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .divergence-value {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #fbbf24;
+            font-family: 'Courier New', monospace;
+        }
+
+        .divergence-bar {
+            width: 100%;
+            height: 4px;
+            background: var(--card-border);
+            border-radius: 2px;
+            margin-top: 0.75rem;
+            overflow: hidden;
+        }
+
+        .divergence-fill {
+            height: 100%;
+            background: #fbbf24;
+            width: 12%;
+            border-radius: 2px;
+        }
+
+        /* Step 6: Behavior Tree */
+        .tree-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            background: var(--navy);
+            border-radius: 8px;
+            border: 1px solid var(--card-border);
+            overflow: auto;
+            padding: 1rem;
+        }
+
+        .tree-node {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .node {
+            background: var(--card-bg);
+            border: 2px solid var(--card-border);
+            border-radius: 6px;
+            padding: 0.75rem 1.25rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-align: center;
+            min-width: 120px;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .node.root {
+            background: var(--navy);
+            border-color: var(--purple);
+            color: var(--purple);
+        }
+
+        .node.task {
+            background: var(--navy);
+            border-color: var(--teal);
+            color: var(--teal);
+        }
+
+        .node.executing {
+            animation: executing 1s ease-in-out infinite;
+            box-shadow: 0 0 20px rgba(0, 180, 216, 0.4);
+            border-color: var(--accent-green);
+            color: var(--accent-green);
+        }
+
+        @keyframes executing {
+            0%, 100% { background: var(--navy); }
+            50% { background: rgba(0, 180, 216, 0.15); }
+        }
+
+        .tree-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .tree-row {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .tree-branch {
+            width: 2px;
+            height: 40px;
+            background: var(--card-border);
+            margin: -1rem 0;
+        }
+
+        /* Step 7: Marketplace */
+        .marketplace-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .marketplace-card {
+            background: var(--navy);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 1.25rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .marketplace-card:hover {
+            border-color: var(--teal);
+            transform: translateY(-4px);
+        }
+
+        .marketplace-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+
+        .marketplace-title {
+            font-weight: 600;
+            color: var(--light-teal);
+        }
+
+        .marketplace-badge {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            padding: 0.25rem 0.6rem;
+            border-radius: 3px;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-behavior {
+            background: rgba(139, 92, 246, 0.2);
+            color: var(--purple);
+        }
+
+        .badge-template {
+            background: rgba(0, 180, 216, 0.2);
+            color: var(--teal);
+        }
+
+        .badge-connector {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .marketplace-stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 0.75rem;
+        }
+
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .marketplace-counter {
+            text-align: center;
+            padding: 1rem;
+            background: var(--card-bg);
+            border: 1px dashed var(--card-border);
+            border-radius: 8px;
+            color: var(--text-muted);
+            grid-column: 1 / -1;
+        }
+
+        .counter-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--teal);
+            display: block;
+        }
+
+        /* Final Screen */
+        .final-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            text-align: center;
+        }
+
+        .final-title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--light-teal);
+            margin-bottom: 0.5rem;
+        }
+
+        .final-subtitle {
+            font-size: 1rem;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        .final-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .desktop-only {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>OMNIX Demo</h1>
+            <a href="index.html">← Back to OMNIX</a>
+        </div>
+
+        <!-- PROGRESS BAR -->
+        <div class="progress-bar" style="--progress: 0.14;"></div>
+
+        <!-- MAIN STAGE -->
+        <div class="stage">
+            <div class="stage-content">
+                <!-- STEP 1: Robot Library -->
+                <div class="step-content active" data-step="1">
+                    <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                        <div class="robot-grid">
+                            <div class="robot-card selected">
+                                <div class="robot-icon">🚁</div>
+                                <div class="robot-name">Quadcopter</div>
+                                <div class="robot-desc">Aerial drone</div>
+                            </div>
+                            <div class="robot-card">
+                                <div class="robot-icon">🦾</div>
+                                <div class="robot-name">Robot Arm</div>
+                                <div class="robot-desc">Industrial manipulator</div>
+                            </div>
+                            <div class="robot-card">
+                                <div class="robot-icon">🤖</div>
+                                <div class="robot-name">Rover</div>
+                                <div class="robot-desc">Ground vehicle</div>
+                            </div>
+                            <div class="robot-card">
+                                <div class="robot-icon">💡</div>
+                                <div class="robot-name">Smart Light</div>
+                                <div class="robot-desc">IoT device</div>
+                            </div>
+                            <div class="robot-card">
+                                <div class="robot-icon">🕷️</div>
+                                <div class="robot-name">Hexapod</div>
+                                <div class="robot-desc">6-legged bot</div>
+                            </div>
+                            <div class="robot-card">
+                                <div class="robot-icon">⚙️</div>
+                                <div class="robot-name">Custom</div>
+                                <div class="robot-desc">Build your own</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 2: Custom Builder -->
+                <div class="step-content" data-step="2">
+                    <div class="builder-split">
+                        <div class="builder-parts">
+                            <div class="part-item"><input type="checkbox" checked> Frame</div>
+                            <div class="part-item"><input type="checkbox" checked> Motors x4</div>
+                            <div class="part-item"><input type="checkbox" checked> ESC</div>
+                            <div class="part-item"><input type="checkbox" checked> Flight Controller</div>
+                            <div class="part-item"><input type="checkbox" checked> Battery</div>
+                            <div class="part-item"><input type="checkbox" checked> GPS</div>
+                        </div>
+                        <div class="builder-preview">
+                            <div class="drone-wireframe">
+                                <div class="rotor pulse-1"></div>
+                                <div class="rotor pulse-2"></div>
+                                <div class="rotor pulse-3"></div>
+                                <div class="rotor pulse-4"></div>
+                                <div class="drone-body"></div>
+                            </div>
+                            <div class="slider-container">
+                                <label for="rotorSlider">Rotor Size</label>
+                                <input type="range" id="rotorSlider" class="slider" min="5" max="7" value="5.5" step="0.1">
+                                <span class="slider-value">5.5"</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 3: NLP Command -->
+                <div class="step-content" data-step="3">
+                    <div class="nlp-section">
+                        <div class="command-input-wrapper">
+                            <span class="command-text" id="commandText"></span><span class="cursor"></span>
+                        </div>
+                        <div class="plan-preview" id="planPreview">
+                            <div class="plan-title"><span class="checkmark">✓</span> PLAN PREVIEW</div>
+                            <div class="plan-steps">
+                                <div class="plan-step">takeoff</div>
+                                <div class="plan-step">→ move(3,0,3)</div>
+                                <div class="plan-step">→ move(3,3,3)</div>
+                                <div class="plan-step">→ move(0,3,3)</div>
+                                <div class="plan-step">→ move(0,0,3)</div>
+                                <div class="plan-step">→ land</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 4: 3D Path -->
+                <div class="step-content" data-step="4">
+                    <div class="canvas-wrapper">
+                        <canvas id="pathCanvas" width="600" height="400"></canvas>
+                    </div>
+                </div>
+
+                <!-- STEP 5: Digital Twin -->
+                <div class="step-content" data-step="5">
+                    <div class="twin-split">
+                        <div class="twin-panel">
+                            <div class="twin-label">Simulated</div>
+                            <div class="twin-indicator"></div>
+                            <div class="twin-path">
+                                <div class="twin-dot"></div>
+                            </div>
+                        </div>
+                        <div class="twin-panel">
+                            <div class="twin-label">Real</div>
+                            <div class="twin-indicator" style="background: var(--accent-red);"></div>
+                            <div class="twin-path">
+                                <div class="twin-dot lagged"></div>
+                            </div>
+                            <div class="divergence-meter">
+                                <div class="divergence-label">Divergence</div>
+                                <div class="divergence-value">0.12m</div>
+                                <div class="divergence-bar">
+                                    <div class="divergence-fill"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 6: Behavior Tree -->
+                <div class="step-content" data-step="6">
+                    <div class="tree-wrapper">
+                        <div class="tree-container">
+                            <div class="node root">Sequence</div>
+                            <div class="tree-branch"></div>
+                            <div class="tree-row">
+                                <div style="display: flex; flex-direction: column; align-items: center; gap: 2rem;">
+                                    <div class="node task">Takeoff</div>
+                                </div>
+                                <div style="display: flex; flex-direction: column; align-items: center; gap: 2rem;">
+                                    <div class="node task executing">Repeat x4</div>
+                                    <div class="tree-branch"></div>
+                                    <div class="node task">Move Forward 3m</div>
+                                </div>
+                                <div style="display: flex; flex-direction: column; align-items: center; gap: 2rem;">
+                                    <div class="node task">Land</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 7: Marketplace -->
+                <div class="step-content" data-step="7">
+                    <div class="marketplace-grid">
+                        <div class="marketplace-card">
+                            <div class="marketplace-header">
+                                <div class="marketplace-title">Agricultural Survey</div>
+                                <span class="marketplace-badge badge-behavior">Behavior</span>
+                            </div>
+                            <div class="marketplace-stats">
+                                <div class="stat">⭐ 4.9 (128 reviews)</div>
+                                <div class="stat">↓ 3.2k downloads</div>
+                            </div>
+                        </div>
+                        <div class="marketplace-card">
+                            <div class="marketplace-header">
+                                <div class="marketplace-title">LiDAR Mapper</div>
+                                <span class="marketplace-badge badge-template">Template</span>
+                            </div>
+                            <div class="marketplace-stats">
+                                <div class="stat">⭐ 4.7 (92 reviews)</div>
+                                <div class="stat">↓ 2.1k downloads</div>
+                            </div>
+                        </div>
+                        <div class="marketplace-card">
+                            <div class="marketplace-header">
+                                <div class="marketplace-title">PX4 Connector</div>
+                                <span class="marketplace-badge badge-connector">Connector</span>
+                            </div>
+                            <div class="marketplace-stats">
+                                <div class="stat">⭐ 5.0 (64 reviews)</div>
+                                <div class="stat">↓ 5.8k downloads</div>
+                            </div>
+                        </div>
+                        <div class="marketplace-card">
+                            <div class="marketplace-header">
+                                <div class="marketplace-title">Racing Drone Kit</div>
+                                <span class="marketplace-badge badge-template">Template</span>
+                            </div>
+                            <div class="marketplace-stats">
+                                <div class="stat">⭐ 4.8 (156 reviews)</div>
+                                <div class="stat">↓ 4.3k downloads</div>
+                            </div>
+                        </div>
+                        <div class="marketplace-counter">
+                            <span class="counter-number">32+</span>
+                            Browse items on the marketplace
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FINAL SCREEN -->
+                <div class="step-content" data-step="8">
+                    <div class="final-screen">
+                        <div class="final-title">Ready to try OMNIX?</div>
+                        <div class="final-subtitle">Launch the full platform and start building.</div>
+                        <div class="final-buttons">
+                            <button class="btn btn-primary" onclick="window.location.href='index.html'">
+                                → Open Dashboard
+                            </button>
+                            <button class="btn btn-secondary" onclick="window.location.href='landing.html'">
+                                View Landing Page
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FOOTER CONTROLS -->
+        <div class="footer">
+            <div class="footer-left">
+                <div class="narration-card">
+                    <div class="step-number" id="stepNum">Step 1 of 7</div>
+                    <div class="step-title" id="stepTitle">Robot Library</div>
+                    <div class="step-description" id="stepDesc">Start by choosing a robot template — or build your own from scratch. OMNIX ships with 10 ready-to-go templates.</div>
+                </div>
+            </div>
+
+            <div class="footer-right desktop-only">
+                <button class="btn btn-secondary btn-small" id="prevBtn" onclick="previousStep()">← Previous</button>
+
+                <div class="step-dots">
+                    <div class="dot active" onclick="goToStep(1)"></div>
+                    <div class="dot" onclick="goToStep(2)"></div>
+                    <div class="dot" onclick="goToStep(3)"></div>
+                    <div class="dot" onclick="goToStep(4)"></div>
+                    <div class="dot" onclick="goToStep(5)"></div>
+                    <div class="dot" onclick="goToStep(6)"></div>
+                    <div class="dot" onclick="goToStep(7)"></div>
+                </div>
+
+                <button class="btn btn-secondary btn-small" id="nextBtn" onclick="nextStep()">Next →</button>
+
+                <button class="autoplay-btn" id="autoplayBtn" onclick="toggleAutoplay()" title="Auto-play">
+                    <div class="autoplay-ring"></div>
+                    ▶
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MOBILE WARNING (for screens < 1024px) -->
+    <div class="mobile-warning">
+        Best viewed on desktop (1024px+)
+    </div>
+
+    <script>
+        const steps = [
+            {
+                num: 1,
+                title: "Robot Library",
+                desc: "Start by choosing a robot template — or build your own from scratch. OMNIX ships with 10 ready-to-go templates.",
+                animate: animateStep1
+            },
+            {
+                num: 2,
+                title: "Custom Builder",
+                desc: "Customize every part. Adjust rotor size, swap motors, tweak physics parameters. Export configs to real hardware.",
+                animate: animateStep2
+            },
+            {
+                num: 3,
+                title: "NLP Command Bar",
+                desc: "Just type what you want. OMNIX parses natural language into executable flight plans — no coding required.",
+                animate: animateStep3
+            },
+            {
+                num: 4,
+                title: "3D Path Preview",
+                desc: "Preview every mission in 3D before execution. See the exact path your robot will take.",
+                animate: animateStep4
+            },
+            {
+                num: 5,
+                title: "Digital Twin",
+                desc: "The digital twin runs sim and real side-by-side. Spot divergence before it becomes a problem.",
+                animate: animateStep5
+            },
+            {
+                num: 6,
+                title: "Behavior Tree Editor",
+                desc: "Build complex missions visually with behavior trees. Drag, drop, and compose — from simple sequences to full autonomy.",
+                animate: animateStep6
+            },
+            {
+                num: 7,
+                title: "Marketplace",
+                desc: "Discover and share on the OMNIX Marketplace. Templates, behaviors, connectors — all community-driven.",
+                animate: animateStep7
+            }
+        ];
+
+        let currentStep = 1;
+        let autoplayActive = false;
+        let autoplayInterval = null;
+
+        function showStep(stepNum) {
+            // Hide all steps
+            document.querySelectorAll('.step-content').forEach(el => {
+                el.classList.remove('active');
+            });
+
+            // Show current step
+            if (stepNum <= 7) {
+                document.querySelector(`[data-step="${stepNum}"]`).classList.add('active');
+            } else {
+                document.querySelector(`[data-step="8"]`).classList.add('active');
+            }
+
+            // Update progress bar
+            const progress = stepNum / 7;
+            document.querySelector('.progress-bar').style.setProperty('--progress', progress);
+
+            // Update step info
+            if (stepNum <= 7) {
+                const step = steps[stepNum - 1];
+                document.getElementById('stepNum').textContent = `Step ${stepNum} of 7`;
+                document.getElementById('stepTitle').textContent = step.title;
+                document.getElementById('stepDesc').textContent = '';
+
+                // Trigger animation
+                if (step.animate) {
+                    step.animate();
+                }
+
+                // Typewriter for description
+                typeDescription(step.desc);
+            } else {
+                document.getElementById('stepNum').textContent = 'Final';
+                document.getElementById('stepTitle').textContent = 'You\'re all set!';
+                document.getElementById('stepDesc').textContent = '';
+            }
+
+            // Update dots
+            document.querySelectorAll('.dot').forEach((dot, idx) => {
+                dot.classList.toggle('active', idx + 1 === stepNum);
+            });
+
+            // Update buttons
+            document.getElementById('prevBtn').disabled = stepNum === 1;
+            document.getElementById('nextBtn').disabled = stepNum > 7;
+
+            currentStep = stepNum;
+        }
+
+        function typeDescription(text) {
+            const elem = document.getElementById('stepDesc');
+            elem.innerHTML = '';
+            let idx = 0;
+
+            function typeChar() {
+                if (idx < text.length) {
+                    elem.textContent += text[idx];
+                    idx++;
+                    setTimeout(typeChar, 20);
+                }
+            }
+
+            typeChar();
+        }
+
+        function nextStep() {
+            if (currentStep < 7) {
+                showStep(currentStep + 1);
+            } else if (currentStep === 7) {
+                showStep(8);
+            }
+        }
+
+        function previousStep() {
+            if (currentStep > 1) {
+                showStep(currentStep - 1);
+            }
+        }
+
+        function goToStep(num) {
+            showStep(num);
+        }
+
+        function toggleAutoplay() {
+            autoplayActive = !autoplayActive;
+            const btn = document.getElementById('autoplayBtn');
+
+            if (autoplayActive) {
+                btn.classList.add('playing');
+                autoplayInterval = setInterval(() => {
+                    if (currentStep < 7) {
+                        showStep(currentStep + 1);
+                    } else if (currentStep === 7) {
+                        showStep(8);
+                        clearInterval(autoplayInterval);
+                        autoplayActive = false;
+                        btn.classList.remove('playing');
+                    }
+                }, 5000);
+            } else {
+                btn.classList.remove('playing');
+                if (autoplayInterval) {
+                    clearInterval(autoplayInterval);
+                }
+            }
+        }
+
+        // Pause autoplay on hover
+        document.querySelector('.stage').addEventListener('mouseenter', () => {
+            if (autoplayActive) {
+                clearInterval(autoplayInterval);
+            }
+        });
+
+        document.querySelector('.stage').addEventListener('mouseleave', () => {
+            if (autoplayActive) {
+                autoplayInterval = setInterval(() => {
+                    if (currentStep < 7) {
+                        showStep(currentStep + 1);
+                    } else if (currentStep === 7) {
+                        showStep(8);
+                        clearInterval(autoplayInterval);
+                        autoplayActive = false;
+                        document.getElementById('autoplayBtn').classList.remove('playing');
+                    }
+                }, 5000);
+            }
+        });
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight') nextStep();
+            if (e.key === 'ArrowLeft') previousStep();
+        });
+
+        // Step animations
+        function animateStep1() {
+            // Pulse animation on selected card
+        }
+
+        function animateStep2() {
+            const slider = document.getElementById('rotorSlider');
+            const value = document.querySelector('.slider-value');
+
+            slider.addEventListener('input', () => {
+                value.textContent = slider.value + '"';
+            });
+        }
+
+        function animateStep3() {
+            const commandText = document.getElementById('commandText');
+            const text = "take off and fly a square pattern at 3m altitude";
+            commandText.innerHTML = '';
+            let idx = 0;
+
+            function type() {
+                if (idx < text.length) {
+                    commandText.textContent += text[idx];
+                    idx++;
+                    setTimeout(type, 30);
+                }
+            }
+
+            type();
+        }
+
+        function animateStep4() {
+            const canvas = document.getElementById('pathCanvas');
+            const ctx = canvas.getContext('2d');
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw grid
+            ctx.strokeStyle = 'rgba(0, 180, 216, 0.1)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 10; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * 60, 0);
+                ctx.lineTo(i * 60, canvas.height);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i * 40);
+                ctx.lineTo(canvas.width, i * 40);
+                ctx.stroke();
+            }
+
+            // Draw axes
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+
+            ctx.lineWidth = 2;
+            ctx.font = '12px Arial';
+
+            // X axis (red)
+            ctx.strokeStyle = '#ff6b6b';
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(centerX + 100, centerY);
+            ctx.stroke();
+            ctx.fillStyle = '#ff6b6b';
+            ctx.fillText('X', centerX + 110, centerY - 5);
+
+            // Y axis (green)
+            ctx.strokeStyle = '#00d98e';
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(centerX, centerY - 100);
+            ctx.stroke();
+            ctx.fillStyle = '#00d98e';
+            ctx.fillText('Y', centerX - 15, centerY - 110);
+
+            // Z axis (blue)
+            ctx.strokeStyle = '#4a9eff';
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(centerX + 70, centerY - 70);
+            ctx.stroke();
+            ctx.fillStyle = '#4a9eff';
+            ctx.fillText('Z', centerX + 80, centerY - 70);
+
+            // Draw path
+            ctx.strokeStyle = '#00B4D8';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(centerX - 80, centerY - 60);
+            ctx.lineTo(centerX + 80, centerY - 60);
+            ctx.lineTo(centerX + 80, centerY + 60);
+            ctx.lineTo(centerX - 80, centerY + 60);
+            ctx.lineTo(centerX - 80, centerY - 60);
+            ctx.stroke();
+
+            // Draw waypoints
+            ctx.fillStyle = '#00B4D8';
+            const waypoints = [
+                [centerX - 80, centerY - 60],
+                [centerX + 80, centerY - 60],
+                [centerX + 80, centerY + 60],
+                [centerX - 80, centerY + 60]
+            ];
+
+            waypoints.forEach(wp => {
+                ctx.beginPath();
+                ctx.arc(wp[0], wp[1], 5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Animate moving dot
+            let progress = 0;
+            const pathLength = 4;
+
+            function animatePath() {
+                progress = (progress + 0.01) % 1;
+
+                // Redraw static elements
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Redraw grid
+                ctx.strokeStyle = 'rgba(0, 180, 216, 0.1)';
+                ctx.lineWidth = 1;
+                for (let i = 0; i <= 10; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(i * 60, 0);
+                    ctx.lineTo(i * 60, canvas.height);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(0, i * 40);
+                    ctx.lineTo(canvas.width, i * 40);
+                    ctx.stroke();
+                }
+
+                // Redraw axes
+                ctx.lineWidth = 2;
+                ctx.font = '12px Arial';
+
+                ctx.strokeStyle = '#ff6b6b';
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(centerX + 100, centerY);
+                ctx.stroke();
+                ctx.fillStyle = '#ff6b6b';
+                ctx.fillText('X', centerX + 110, centerY - 5);
+
+                ctx.strokeStyle = '#00d98e';
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(centerX, centerY - 100);
+                ctx.stroke();
+                ctx.fillStyle = '#00d98e';
+                ctx.fillText('Y', centerX - 15, centerY - 110);
+
+                ctx.strokeStyle = '#4a9eff';
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.lineTo(centerX + 70, centerY - 70);
+                ctx.stroke();
+                ctx.fillStyle = '#4a9eff';
+                ctx.fillText('Z', centerX + 80, centerY - 70);
+
+                // Redraw path
+                ctx.strokeStyle = '#00B4D8';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(centerX - 80, centerY - 60);
+                ctx.lineTo(centerX + 80, centerY - 60);
+                ctx.lineTo(centerX + 80, centerY + 60);
+                ctx.lineTo(centerX - 80, centerY + 60);
+                ctx.lineTo(centerX - 80, centerY - 60);
+                ctx.stroke();
+
+                // Redraw waypoints
+                ctx.fillStyle = '#00B4D8';
+                waypoints.forEach(wp => {
+                    ctx.beginPath();
+                    ctx.arc(wp[0], wp[1], 5, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                // Calculate position on path
+                let x, y;
+                if (progress < 0.25) {
+                    const p = progress * 4;
+                    x = centerX - 80 + p * 160;
+                    y = centerY - 60;
+                } else if (progress < 0.5) {
+                    const p = (progress - 0.25) * 4;
+                    x = centerX + 80;
+                    y = centerY - 60 + p * 120;
+                } else if (progress < 0.75) {
+                    const p = (progress - 0.5) * 4;
+                    x = centerX + 80 - p * 160;
+                    y = centerY + 60;
+                } else {
+                    const p = (progress - 0.75) * 4;
+                    x = centerX - 80;
+                    y = centerY + 60 - p * 120;
+                }
+
+                // Draw moving dot
+                ctx.fillStyle = '#90E0EF';
+                ctx.beginPath();
+                ctx.arc(x, y, 6, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw glow
+                ctx.fillStyle = 'rgba(0, 180, 216, 0.3)';
+                ctx.beginPath();
+                ctx.arc(x, y, 12, 0, Math.PI * 2);
+                ctx.fill();
+
+                requestAnimationFrame(animatePath);
+            }
+
+            animatePath();
+        }
+
+        function animateStep5() {
+            // Already handled by CSS animations
+        }
+
+        function animateStep6() {
+            // Already handled by CSS animations
+        }
+
+        function animateStep7() {
+            // Already handled by CSS (no animation needed)
+        }
+
+        // Initialize
+        showStep(1);
+    </script>
+</body>
+</html>

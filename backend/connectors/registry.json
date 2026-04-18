@@ -1,0 +1,122 @@
+{
+  "version": 1,
+  "description": "Maps VPE classifications to OMNIX connectors. Higher score = better fit. Editable — reload via /api/connectors/reload-registry.",
+  "mappings": [
+    {
+      "match": {"device_category": "drone"},
+      "connectors": [
+        {"id": "tello",   "score": 10, "hint": "If this is a DJI Tello, use the Tello connector — it speaks the open Tello SDK over Wi-Fi UDP."},
+        {"id": "mavlink", "score": 9,  "hint": "For PX4/ArduPilot drones (Pixhawk, Holybro, etc.) — works over serial/UDP/TCP."},
+        {"id": "pi_agent", "score": 4, "hint": "DIY drone built on a Raspberry Pi — install the OMNIX Pi agent."},
+        {"id": "esp32_wifi", "score": 3, "hint": "DIY drone built on an ESP32 — flash the OMNIX ESP32 sketch."}
+      ]
+    },
+    {
+      "match": {"device_category": "ground_robot"},
+      "connectors": [
+        {"id": "pi_agent",        "score": 10, "hint": "Raspberry Pi-based rover — use the Pi agent."},
+        {"id": "arduino_serial",  "score": 8,  "hint": "Arduino Uno/Nano/Mega driving the motors — connect via USB serial."},
+        {"id": "esp32_wifi",      "score": 8,  "hint": "ESP32-based rover — flash the OMNIX sketch."},
+        {"id": "ros2_bridge",     "score": 7,  "hint": "If your rover already runs ROS2 (Nav2 etc.), bridge topics directly."},
+        {"id": "mavlink",         "score": 3,  "hint": "Some rovers use ArduRover/MAVLink — try this if you have a Pixhawk."}
+      ]
+    },
+    {
+      "match": {"device_category": "robot_arm"},
+      "connectors": [
+        {"id": "ros2_bridge",     "score": 9, "hint": "Most modern arms (UR, Franka) have ROS2 drivers — bridge is the fastest route."},
+        {"id": "arduino_serial",  "score": 8, "hint": "Hobby arm (MeArm, SO-100, Dobot clone) driven by Arduino — USB serial works great."},
+        {"id": "esp32_wifi",      "score": 7, "hint": "ESP32-based arm — flash the OMNIX sketch."},
+        {"id": "pi_agent",        "score": 6, "hint": "Pi driving servos via GPIO/PWM hat."}
+      ]
+    },
+    {
+      "match": {"device_category": "industrial"},
+      "connectors": [
+        {"id": "ros2_bridge",     "score": 10, "hint": "Industrial arms almost always have a ROS2 driver — use the bridge."},
+        {"id": "pi_agent",        "score": 3,  "hint": "Only for DIY industrial setups."}
+      ]
+    },
+    {
+      "match": {"device_category": "humanoid"},
+      "connectors": [
+        {"id": "ros2_bridge", "score": 10, "hint": "Humanoids (Pepper, NAO, custom) typically expose ROS topics."},
+        {"id": "pi_agent",    "score": 6,  "hint": "DIY humanoid with a Pi brain."}
+      ]
+    },
+    {
+      "match": {"device_category": "legged"},
+      "connectors": [
+        {"id": "ros2_bridge", "score": 9, "hint": "Most open quadrupeds (Unitree, MIT Mini Cheetah) have ROS2 support."},
+        {"id": "pi_agent",    "score": 7, "hint": "DIY quadruped with a Pi — install the agent."},
+        {"id": "esp32_wifi",  "score": 6, "hint": "ESP32-based quadruped — flash the OMNIX sketch."}
+      ]
+    },
+    {
+      "match": {"device_category": "home_robot"},
+      "connectors": [
+        {"id": "pi_agent",    "score": 9, "hint": "DIY vacuum/mower brain on a Pi."},
+        {"id": "esp32_wifi",  "score": 7, "hint": "ESP32 brain — flash the OMNIX sketch."},
+        {"id": "ros2_bridge", "score": 6, "hint": "Some iRobot / research platforms run ROS2."}
+      ]
+    },
+    {
+      "match": {"device_category": "service_robot"},
+      "connectors": [
+        {"id": "ros2_bridge", "score": 9, "hint": "Service robots (delivery, hospitality) usually run ROS2."},
+        {"id": "pi_agent",    "score": 6, "hint": "DIY builds on a Pi."}
+      ]
+    },
+    {
+      "match": {"device_category": "warehouse"},
+      "connectors": [
+        {"id": "ros2_bridge", "score": 10, "hint": "AMRs (Fetch, MiR, Otto) are ROS-native — bridge topics."},
+        {"id": "pi_agent",    "score": 3,  "hint": "Only for DIY AMRs."}
+      ]
+    },
+    {
+      "match": {"device_category": "medical"},
+      "connectors": [
+        {"id": "ros2_bridge", "score": 10, "hint": "Medical robots (da Vinci research kit, etc.) expose ROS interfaces."}
+      ]
+    },
+    {
+      "match": {"device_category": "smart_light"},
+      "connectors": [
+        {"id": "esp32_wifi", "score": 9, "hint": "ESP32 with PWM/NeoPixel — flash the OMNIX sketch."},
+        {"id": "pi_agent",   "score": 7, "hint": "Pi-controlled LED setup."},
+        {"id": "arduino_serial", "score": 5, "hint": "Arduino + LED driver over USB."}
+      ]
+    },
+    {
+      "match": {"device_category": "smart_device"},
+      "connectors": [
+        {"id": "esp32_wifi",     "score": 10, "hint": "ESP32 is the most common brain for smart devices — flash the sketch."},
+        {"id": "arduino_serial", "score": 6,  "hint": "Arduino over USB serial."},
+        {"id": "pi_agent",       "score": 5,  "hint": "Pi-hosted control."}
+      ]
+    },
+    {
+      "match": {"device_category": "marine"},
+      "connectors": [
+        {"id": "mavlink",  "score": 9, "hint": "Ardusub / BlueROV and most marine vehicles speak MAVLink."},
+        {"id": "pi_agent", "score": 5, "hint": "DIY boats on a Pi."}
+      ]
+    },
+    {
+      "match": {"device_category": "space"},
+      "connectors": [
+        {"id": "ros2_bridge", "score": 7, "hint": "Research space robots often run ROS2."},
+        {"id": "mavlink",     "score": 5, "hint": "Some CubeSat dev kits reuse MAVLink."}
+      ]
+    },
+    {
+      "match": {"device_category": "extreme"},
+      "connectors": [
+        {"id": "ros2_bridge", "score": 7, "hint": "Field / extreme-environment robots mostly run ROS2."},
+        {"id": "pi_agent",    "score": 5, "hint": "DIY rugged builds on a Pi."}
+      ]
+    }
+  ],
+  "default_connectors": ["pi_agent", "esp32_wifi", "arduino_serial"]
+}

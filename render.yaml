@@ -1,0 +1,23 @@
+# Render.com deployment configuration
+# Connect your GitHub repo at https://dashboard.render.com
+# and Render will auto-detect this file.
+
+services:
+  - type: web
+    name: omnix
+    runtime: python
+    plan: free
+    buildCommand: pip install websockets
+    startCommand: cd backend && python3 server_simple.py
+    envVars:
+      - key: OMNIX_PORT
+        value: "10000"
+      - key: OMNIX_HOST
+        value: "0.0.0.0"
+      - key: OMNIX_ENV
+        value: "production"
+      - key: OMNIX_GUEST_MODE
+        value: "true"
+      - key: OMNIX_DB_BACKEND
+        value: "memory"
+    healthCheckPath: /healthz

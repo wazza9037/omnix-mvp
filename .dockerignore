@@ -1,0 +1,46 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+dist/
+build/
+.eggs/
+
+# Testing
+.pytest_cache
+.coverage
+htmlcov/
+backend/tests/
+
+# Development
+.env
+.env.local
+*.db
+.ruff_cache
+.mypy_cache
+.vscode
+.idea
+*.swp
+*.swo
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (if any frontend build tools)
+node_modules/

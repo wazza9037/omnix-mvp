@@ -1,0 +1,23 @@
+# OMNIX runtime dependencies.
+#
+# The core server runs on the Python standard library only — no external
+# dependencies are required to boot. Everything below is OPTIONAL and
+# unlocks specific capabilities:
+
+# Vision: required only for /vpe.html scanning. The rest of the app works
+# without these.
+opencv-python>=4.8,<5.0
+numpy>=1.24,<3.0
+
+# Connectors — each is optional; the associated connector falls back to
+# simulation mode when missing.
+pyserial>=3.5,<4.0          # Arduino / serial devices
+pymavlink>=2.4,<3.0         # PX4 / ArduPilot drones
+
+# Historically used by the legacy WebSocket server (not used in the
+# current simple HTTP mode, kept for the Pi agent SDK example).
+websockets>=12.0,<14.0
+
+# ROS2 (rclpy) is NOT listed here — it is installed via the ROS2 distro's
+# apt packages, not pip. The ros2_bridge connector imports it
+# opportunistically.

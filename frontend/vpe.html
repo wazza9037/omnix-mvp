@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OMNIX — Visual Physics Engine</title>
+<style>
+  :root {
+    --navy: #0D1B2A;
+    --deep-blue: #1B2838;
+    --teal: #00B4D8;
+    --light-teal: #90E0EF;
+    --ice: #CAF0F8;
+    --bg: #0a1120;
+    --card-bg: #111b2e;
+    --card-border: #1e2d45;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --purple: #8b5cf6;
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .header {
+    background: var(--navy);
+    border-bottom: 1px solid var(--card-border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .logo { font-size: 24px; font-weight: 800; color: var(--teal); letter-spacing: 3px; }
+  .logo-sub { font-size: 11px; color: var(--text-muted); letter-spacing: 1px; }
+
+  .nav-links { display: flex; gap: 8px; }
+  .nav-links a {
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s;
+  }
+  .nav-links a:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+  .nav-links a.active { background: var(--teal); color: var(--navy); font-weight: 700; }
+
+  .main { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+
+  .hero {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .hero-icon { font-size: 48px; margin-bottom: 12px; }
+  .hero h1 { font-size: 32px; font-weight: 800; margin-bottom: 8px; }
+  .hero p { color: var(--text-muted); font-size: 15px; max-width: 600px; margin: 0 auto; }
+
+  /* Upload area */
+  .upload-area {
+    border: 2px dashed var(--card-border);
+    border-radius: var(--radius);
+    padding: 60px 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: var(--card-bg);
+    margin-bottom: 32px;
+  }
+  .upload-area:hover, .upload-area.dragover {
+    border-color: var(--teal);
+    background: rgba(0, 180, 216, 0.05);
+  }
+  .upload-area.analyzing {
+    border-color: var(--purple);
+    background: rgba(139, 92, 246, 0.05);
+  }
+  .upload-icon { font-size: 48px; margin-bottom: 12px; }
+  .upload-text { font-size: 16px; margin-bottom: 8px; }
+  .upload-sub { color: var(--text-muted); font-size: 13px; }
+  .upload-area input { display: none; }
+
+  /* Preview */
+  .preview-container {
+    display: none;
+    margin-bottom: 32px;
+  }
+  .preview-container.visible { display: block; }
+
+  .preview-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  .preview-image {
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+  }
+  .preview-image img {
+    width: 100%;
+    display: block;
+  }
+  .preview-image .label {
+    padding: 8px 12px;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+  }
+
+  /* Results */
+  .results { display: none; }
+  .results.visible { display: block; }
+
+  .result-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding: 20px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+  }
+  .result-header .device-icon { font-size: 42px; }
+  .result-header h2 { font-size: 22px; font-weight: 700; }
+  .result-header .confidence {
+    font-size: 13px;
+    color: var(--teal);
+    font-weight: 600;
+  }
+  .result-header .processing-time {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* Score ring */
+  .score-section {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .score-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 20px;
+    text-align: center;
+  }
+  .score-value {
+    font-size: 36px;
+    font-weight: 800;
+    margin-bottom: 4px;
+  }
+  .score-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .score-bar {
+    height: 4px;
+    background: var(--card-border);
+    border-radius: 2px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+  .score-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1s ease-out;
+  }
+
+  /* Physics section */
+  .section {
+    margin-bottom: 24px;
+  }
+  .section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .params-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+  }
+  .param-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 12px 16px;
+  }
+  .param-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .param-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--teal);
+  }
+
+  /* Optimizations */
+  .optimization-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 8px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .opt-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .opt-content h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .opt-content p {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+  .opt-impact {
+    margin-top: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--success);
+  }
+  .opt-type-critical .opt-icon { color: var(--danger); }
+  .opt-type-warning .opt-icon { color: var(--warning); }
+  .opt-type-suggestion .opt-icon { color: var(--teal); }
+  .opt-type-insight .opt-icon { color: var(--purple); }
+  .opt-type-info .opt-icon { color: var(--text-muted); }
+
+  /* Components */
+  .component-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    background: rgba(0,180,216,0.1);
+    color: var(--teal);
+    margin: 2px;
+  }
+
+  /* Color swatches */
+  .color-swatch-row { display: flex; gap: 8px; margin: 8px 0; }
+  .color-swatch-display {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border: 2px solid var(--card-border);
+  }
+
+  /* Loading spinner */
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--card-border);
+    border-top-color: var(--teal);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .preview-grid { grid-template-columns: 1fr; }
+    .score-section { grid-template-columns: repeat(2, 1fr); }
+    .params-grid { grid-template-columns: 1fr 1fr; }
+  }
+
+  .btn {
+    background: var(--teal);
+    color: var(--navy);
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--card-border);
+    color: var(--text);
+  }
+  .btn-outline:hover { border-color: var(--teal); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div>
+      <div class="logo">OMNIX</div>
+      <div class="logo-sub">Visual Physics Engine</div>
+    </div>
+  </div>
+  <div class="nav-links">
+    <a href="/">Studio</a>
+    <a href="/vpe.html" class="active">Physics Engine</a>
+    <a href="/pi.html">Pi Manager</a>
+  </div>
+</div>
+
+<div class="main">
+  <div class="hero" id="hero">
+    <div class="hero-icon">\ud83d\udcf7</div>
+    <h1>Visual Physics Engine</h1>
+    <p>Take a photo of any device. OMNIX will identify it, analyze its physics, and tell you how to optimize it.</p>
+  </div>
+
+  <!-- Upload Area -->
+  <div class="upload-area" id="upload-area">
+    <div class="upload-icon" id="upload-icon">\ud83d\udcc1</div>
+    <div class="upload-text" id="upload-text">Drop an image here or click to upload</div>
+    <div class="upload-sub" id="upload-sub">Supports JPG, PNG, WebP (max 10MB)</div>
+    <input type="file" id="file-input" accept="image/*">
+  </div>
+
+  <!-- Image Preview -->
+  <div class="preview-container" id="preview-container">
+    <div class="preview-grid">
+      <div class="preview-image">
+        <div class="label">Original Photo</div>
+        <img id="original-image" src="" alt="Original">
+      </div>
+      <div class="preview-image">
+        <div class="label">OMNIX Analysis Overlay</div>
+        <img id="annotated-image" src="" alt="Annotated">
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="results" id="results">
+    <!-- Classification Header -->
+    <div class="result-header" id="result-header"></div>
+
+    <!-- Scores -->
+    <div class="score-section" id="score-section"></div>
+
+    <!-- Physics Parameters -->
+    <div class="section" id="physics-section">
+      <div class="section-title">\u2699\ufe0f Operational Physics</div>
+      <div class="params-grid" id="physics-grid"></div>
+    </div>
+
+    <!-- Physical Properties -->
+    <div class="section" id="properties-section">
+      <div class="section-title">\ud83d\udccf Physical Properties</div>
+      <div class="params-grid" id="properties-grid"></div>
+    </div>
+
+    <!-- Detected Components -->
+    <div class="section" id="components-section">
+      <div class="section-title">\ud83d\udd27 Detected Components</div>
+      <div id="components-list"></div>
+    </div>
+
+    <!-- Color Profile -->
+    <div class="section" id="color-section">
+      <div class="section-title">\ud83c\udfa8 Color Profile & Material</div>
+      <div id="color-profile"></div>
+    </div>
+
+    <!-- Optimizations -->
+    <div class="section" id="optimizations-section">
+      <div class="section-title">\ud83d\ude80 Optimization Recommendations</div>
+      <div id="optimizations-list"></div>
+    </div>
+
+    <!-- Actions -->
+    <div style="text-align:center;margin-top:32px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <button class="btn" onclick="goToMotion3D()" id="btn-motion3d" style="background:#8b5cf6">🎬 Open in Studio</button>
+      <button class="btn" onclick="addMoreImages()" id="btn-add-image">Add Another Angle</button>
+      <button class="btn btn-outline" onclick="resetAnalysis()">Analyze New Device</button>
+      <button class="btn btn-outline" onclick="downloadReport()">Download Report</button>
+    </div>
+    <div id="image-count-badge" style="text-align:center;margin-top:12px;display:none">
+      <span style="font-size:12px;color:var(--teal);background:rgba(0,180,216,0.1);padding:4px 12px;border-radius:12px"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentResult = null;
+
+const DEVICE_ICONS = {
+  drone: "\ud83d\ude81",
+  robot_arm: "\ud83e\uddbe",
+  smart_light: "\ud83d\udca1",
+  ground_robot: "\ud83e\udd16",
+  humanoid: "\ud83e\uddcd",
+  home_robot: "\ud83e\uddf9",
+  industrial: "\u2699\ufe0f",
+  smart_device: "\ud83d\udcfb",
+  legged: "\ud83d\udc3e",
+  service_robot: "\ud83e\uddfe",
+  warehouse: "\ud83c\udfed",
+  medical: "\u2695\ufe0f",
+  marine: "\ud83c\udf0a",
+  space: "\ud83d\ude80",
+  extreme: "\ud83d\udd25",
+  unknown: "\u2753",
+};
+
+const OPT_ICONS = {
+  critical: "\ud83d\udea8",
+  warning: "\u26a0\ufe0f",
+  suggestion: "\ud83d\udca1",
+  insight: "\ud83d\udd2d",
+  info: "\u2139\ufe0f",
+};
+
+// ---- Upload Handling ----
+const uploadArea = document.getElementById("upload-area");
+const fileInput = document.getElementById("file-input");
+
+uploadArea.addEventListener("click", () => fileInput.click());
+uploadArea.addEventListener("dragover", (e) => { e.preventDefault(); uploadArea.classList.add("dragover"); });
+uploadArea.addEventListener("dragleave", () => uploadArea.classList.remove("dragover"));
+uploadArea.addEventListener("drop", (e) => {
+  e.preventDefault();
+  uploadArea.classList.remove("dragover");
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener("change", () => {
+  if (fileInput.files.length) handleFile(fileInput.files[0]);
+});
+
+function handleFile(file) {
+  if (!file.type.startsWith("image/")) {
+    alert("Please upload an image file (JPG, PNG, WebP)");
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    alert("File too large. Maximum 10MB.");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const b64 = e.target.result;
+    document.getElementById("original-image").src = b64;
+    analyzeImage(b64);
+  };
+  reader.readAsDataURL(file);
+}
+
+async function analyzeImage(b64Data) {
+  // Show loading state
+  uploadArea.classList.add("analyzing");
+  document.getElementById("upload-icon").innerHTML = '<div class="spinner"></div>';
+  document.getElementById("upload-text").textContent = "Analyzing device physics...";
+  document.getElementById("upload-sub").textContent = "Detecting components, classifying device, calculating physics";
+
+  try {
+    const res = await fetch("/api/vpe/analyze", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ image: b64Data }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Analysis failed");
+    }
+
+    const result = await res.json();
+    currentResult = result;
+    displayResults(result);
+  } catch (err) {
+    alert("Analysis failed: " + err.message);
+    resetUploadArea();
+  }
+}
+
+function displayResults(result) {
+  // Hide upload, show results
+  uploadArea.style.display = "none";
+  document.getElementById("hero").style.display = "none";
+
+  // Show annotated image
+  const previewContainer = document.getElementById("preview-container");
+  previewContainer.classList.add("visible");
+  if (result.image_analysis.annotated_image) {
+    document.getElementById("annotated-image").src =
+      "data:image/jpeg;base64," + result.image_analysis.annotated_image;
+  }
+
+  // Classification header
+  const cls = result.classification;
+  const icon = DEVICE_ICONS[cls.device_category] || DEVICE_ICONS.unknown;
+  document.getElementById("result-header").innerHTML = `
+    <div class="device-icon">${icon}</div>
+    <div>
+      <h2>${cls.description}</h2>
+      <div class="confidence">${cls.device_type.replace(/_/g, " ")} &mdash; ${(cls.confidence * 100).toFixed(0)}% confidence</div>
+    </div>
+    <div class="processing-time">Analyzed in ${result.processing_time_ms}ms</div>
+  `;
+
+  // Scores
+  const scores = result.physics.scores;
+  const scoreColors = {
+    overall: score => score > 70 ? "var(--success)" : score > 40 ? "var(--warning)" : "var(--danger)",
+    efficiency: () => "var(--teal)",
+    stability: () => "var(--purple)",
+    maneuverability: () => "var(--warning)",
+  };
+
+  document.getElementById("score-section").innerHTML = Object.entries(scores).map(([key, value]) => {
+    const color = scoreColors[key] ? scoreColors[key](value) : "var(--teal)";
+    return `
+      <div class="score-card">
+        <div class="score-value" style="color:${color}">${Math.round(value)}</div>
+        <div class="score-label">${key}</div>
+        <div class="score-bar"><div class="score-fill" style="width:${value}%;background:${color}"></div></div>
+      </div>
+    `;
+  }).join("");
+
+  // Operational Physics
+  const ops = result.physics.operational_params;
+  document.getElementById("physics-grid").innerHTML = Object.entries(ops).map(([key, value]) => {
+    const label = key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    const display = typeof value === "number" ? (Number.isInteger(value) ? value : value.toFixed(2)) :
+                    Array.isArray(value) ? value.join(" - ") : String(value);
+    return `
+      <div class="param-card">
+        <div class="param-label">${label}</div>
+        <div class="param-value">${display}</div>
+      </div>
+    `;
+  }).join("");
+
+  // Physical Properties
+  const props = result.physics.physical_properties;
+  document.getElementById("properties-grid").innerHTML = `
+    <div class="param-card">
+      <div class="param-label">Estimated Mass</div>
+      <div class="param-value">${props.estimated_mass_kg} kg</div>
+    </div>
+    <div class="param-card">
+      <div class="param-label">Drag Coefficient</div>
+      <div class="param-value">${props.drag_coefficient}</div>
+    </div>
+    <div class="param-card">
+      <div class="param-label">Structural Integrity</div>
+      <div class="param-value">${(props.structural_integrity * 100).toFixed(0)}%</div>
+    </div>
+    <div class="param-card">
+      <div class="param-label">CoG (x/y/z)</div>
+      <div class="param-value">${Object.values(props.center_of_gravity).map(v => v.toFixed(2)).join(" / ")}</div>
+    </div>
+    ${Object.entries(props.estimated_inertia).map(([axis, val]) => `
+      <div class="param-card">
+        <div class="param-label">Inertia ${axis}</div>
+        <div class="param-value">${val} kg\u00b7m\u00b2</div>
+      </div>
+    `).join("")}
+  `;
+
+  // Components
+  const comps = result.image_analysis.structural.components;
+  if (comps.length > 0) {
+    document.getElementById("components-list").innerHTML = comps.map(c =>
+      `<span class="component-tag">${c.name.replace(/_/g, " ")} (${(c.confidence * 100).toFixed(0)}%)</span>`
+    ).join("");
+  } else {
+    document.getElementById("components-list").innerHTML =
+      '<span style="color:var(--text-muted);font-size:13px">No distinct components detected. Try a closer or better-lit photo.</span>';
+  }
+
+  // Color profile
+  const colors = result.image_analysis.color_profile;
+  document.getElementById("color-profile").innerHTML = `
+    <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+      <div class="param-card" style="flex:1;min-width:150px">
+        <div class="param-label">Estimated Material</div>
+        <div class="param-value">${colors.estimated_material.replace(/_/g, " ")}</div>
+      </div>
+      <div class="param-card" style="flex:1;min-width:150px">
+        <div class="param-label">Avg Brightness</div>
+        <div class="param-value">${colors.avg_brightness.toFixed(0)}</div>
+      </div>
+      <div style="flex:2;min-width:200px">
+        <div class="param-label" style="font-size:11px;color:var(--text-muted);margin-bottom:6px">DOMINANT COLORS</div>
+        <div class="color-swatch-row">
+          ${colors.dominant_colors.map(c =>
+            `<div class="color-swatch-display" style="background:${c.hex}" title="${c.hex}"></div>`
+          ).join("")}
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Optimizations
+  const opts = result.physics.optimizations;
+  document.getElementById("optimizations-list").innerHTML = opts.map(o => {
+    const icon = OPT_ICONS[o.type] || "\u2139\ufe0f";
+    return `
+      <div class="optimization-card opt-type-${o.type}">
+        <div class="opt-icon">${icon}</div>
+        <div class="opt-content">
+          <h4>${o.title}</h4>
+          <p>${o.description}</p>
+          <div class="opt-impact">\u2191 ${o.expected_improvement}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  // Show results
+  document.getElementById("results").classList.add("visible");
+}
+
+function resetAnalysis() {
+  currentResult = null;
+  uploadArea.style.display = "";
+  document.getElementById("hero").style.display = "";
+  document.getElementById("preview-container").classList.remove("visible");
+  document.getElementById("results").classList.remove("visible");
+  resetUploadArea();
+  fileInput.value = "";
+}
+
+function resetUploadArea() {
+  uploadArea.classList.remove("analyzing");
+  document.getElementById("upload-icon").textContent = "\ud83d\udcc1";
+  document.getElementById("upload-text").textContent = "Drop an image here or click to upload";
+  document.getElementById("upload-sub").textContent = "Supports JPG, PNG, WebP (max 10MB)";
+}
+
+function downloadReport() {
+  if (!currentResult) return;
+  const blob = new Blob([JSON.stringify(currentResult, null, 2)], {type: "application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `omnix-vpe-report-${currentResult.analysis_id}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── Motion 3D Integration ───
+
+async function goToMotion3D() {
+  if (!currentResult || !currentResult.profile_id) return;
+  // Set this device as active in the device store
+  await fetch("/api/device-store/set-active", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ profile_id: currentResult.profile_id }),
+  });
+  // Navigate back to the unified Studio (Control Panel + 3D viewer)
+  window.location.href = "/";
+}
+
+// ─── Multi-Image Support ───
+
+function addMoreImages() {
+  // Create a hidden file input for additional images
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.onchange = () => {
+    if (!input.files.length) return;
+    const file = input.files[0];
+    if (!file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      analyzeAdditionalImage(e.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+}
+
+async function analyzeAdditionalImage(b64Data) {
+  if (!currentResult || !currentResult.profile_id) return;
+
+  // Show loading on the button
+  const btn = document.getElementById("btn-add-image");
+  const origText = btn.textContent;
+  btn.textContent = "Analyzing...";
+  btn.disabled = true;
+
+  try {
+    const res = await fetch("/api/vpe/add-image", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ image: b64Data, profile_id: currentResult.profile_id }),
+    });
+
+    if (!res.ok) throw new Error("Failed to analyze additional image");
+    const result = await res.json();
+
+    // Update current result with refined data
+    currentResult.physics = result.physics;
+    currentResult.classification = result.classification;
+    currentResult.image_analysis = result.image_analysis;
+    if (result.mesh_params) currentResult.mesh_params = result.mesh_params;
+
+    // Show image count
+    const badge = document.getElementById("image-count-badge");
+    badge.style.display = "block";
+    badge.querySelector("span").textContent =
+      `${result.image_count} images analyzed \u2014 confidence ${(result.classification.confidence * 100).toFixed(0)}%`;
+
+    // Re-render results with updated data
+    displayResults(currentResult);
+  } catch (err) {
+    alert("Failed to add image: " + err.message);
+  } finally {
+    btn.textContent = origText;
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>

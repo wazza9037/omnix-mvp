@@ -1,0 +1,2693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="OMNIX">
+<meta name="theme-color" content="#0a1628">
+<meta name="description" content="OMNIX — Universal robotics control from your phone">
+<link rel="manifest" href="/mobile/manifest.json">
+<link rel="apple-touch-icon" href="/mobile/icon-192.png">
+<title>OMNIX Mobile</title>
+
+<style>
+/* ═══════════════════════════════════════════════════════════
+   OMNIX Mobile — CSS Foundation
+   Touch-optimized, dark-first, thumb-friendly
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  --navy: #0a1628;
+  --navy-light: #0f1f38;
+  --navy-mid: #162744;
+  --card: #1a2d4a;
+  --card-hover: #1e3454;
+  --border: #1e3050;
+  --border-light: #2a4060;
+  --teal: #00b4d8;
+  --teal-dim: rgba(0,180,216,0.15);
+  --teal-glow: rgba(0,180,216,0.3);
+  --accent: #00d2b4;
+  --danger: #ff4757;
+  --danger-dim: rgba(255,71,87,0.15);
+  --warning: #ffa502;
+  --warning-dim: rgba(255,165,2,0.15);
+  --success: #2ed573;
+  --success-dim: rgba(46,213,115,0.15);
+  --text: #e8edf5;
+  --text-dim: #8899aa;
+  --text-muted: #556677;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --radius-full: 50%;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --tab-height: 64px;
+  --header-height: 56px;
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%; width: 100%;
+  font-family: var(--font);
+  background: var(--navy);
+  color: var(--text);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── Light theme overrides ── */
+body.light {
+  --navy: #f0f4f8;
+  --navy-light: #ffffff;
+  --navy-mid: #e8ecf0;
+  --card: #ffffff;
+  --card-hover: #f5f7fa;
+  --border: #d8dfe8;
+  --border-light: #e4eaf0;
+  --text: #1a2030;
+  --text-dim: #5a6a7a;
+  --text-muted: #8a96a4;
+}
+
+/* ── App shell layout ── */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  height: 100dvh;
+  position: relative;
+}
+
+/* ── Offline banner ── */
+#offline-banner {
+  display: none;
+  background: var(--warning);
+  color: #1a1a1a;
+  text-align: center;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  z-index: 100;
+}
+#offline-banner.show { display: block; }
+
+/* ── Header bar ── */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  padding-top: var(--safe-top);
+  height: calc(var(--header-height) + var(--safe-top));
+  min-height: calc(var(--header-height) + var(--safe-top));
+  background: var(--navy-light);
+  border-bottom: 1px solid var(--border);
+  z-index: 50;
+}
+
+.header-logo {
+  display: flex; align-items: center; gap: 8px;
+}
+.header-logo svg { width: 28px; height: 28px; }
+.header-logo span {
+  font-size: 18px; font-weight: 700;
+  background: linear-gradient(135deg, var(--teal), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 1px;
+}
+
+.header-status {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 12px;
+}
+
+.conn-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 6px var(--success);
+  transition: background var(--transition), box-shadow var(--transition);
+}
+.conn-dot.reconnecting { background: var(--warning); box-shadow: 0 0 6px var(--warning); animation: pulse 1.2s infinite; }
+.conn-dot.disconnected { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.header-battery {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: 600; color: var(--text-dim);
+}
+.header-battery svg { width: 18px; height: 18px; }
+
+/* ── Install prompt ── */
+#install-prompt {
+  display: none;
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6); z-index: 200;
+  justify-content: center; align-items: flex-end;
+  padding: 16px;
+  padding-bottom: calc(16px + var(--safe-bottom));
+}
+#install-prompt.show { display: flex; }
+.install-card {
+  background: var(--card);
+  border-radius: 20px;
+  padding: 24px;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  border: 1px solid var(--border);
+}
+.install-card h3 { font-size: 18px; margin-bottom: 8px; }
+.install-card p { font-size: 14px; color: var(--text-dim); margin-bottom: 20px; line-height: 1.5; }
+.install-btns { display: flex; gap: 12px; }
+.install-btns button {
+  flex: 1; padding: 14px; border-radius: var(--radius);
+  font-size: 15px; font-weight: 600; border: none; cursor: pointer;
+}
+.btn-install {
+  background: linear-gradient(135deg, var(--teal), var(--accent));
+  color: #fff;
+}
+.btn-dismiss {
+  background: var(--navy-mid);
+  color: var(--text-dim);
+}
+
+/* ── Tab content area ── */
+.tab-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.tab-pane {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.25s ease;
+  padding-bottom: 8px;
+}
+.tab-pane.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* ── Bottom tab bar ── */
+.tab-bar {
+  display: flex;
+  align-items: stretch;
+  background: var(--navy-light);
+  border-top: 1px solid var(--border);
+  height: calc(var(--tab-height) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  z-index: 50;
+}
+
+.tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color var(--transition);
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+.tab-item svg { width: 24px; height: 24px; transition: color var(--transition); }
+.tab-item.active { color: var(--teal); }
+.tab-item.active::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 50%; transform: translateX(-50%);
+  width: 24px; height: 2px;
+  background: var(--teal);
+  border-radius: 0 0 2px 2px;
+}
+.tab-item .badge {
+  position: absolute;
+  top: 4px; right: calc(50% - 18px);
+  min-width: 16px; height: 16px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 9px; font-weight: 700;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SHARED COMPONENTS
+   ═══════════════════════════════════════════════════════════ */
+
+/* Cards */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 14px;
+  margin: 0 16px 10px;
+  transition: background var(--transition), border-color var(--transition);
+}
+.card:active { background: var(--card-hover); border-color: var(--border-light); }
+
+/* Section headers */
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 12px 16px 6px;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition);
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-primary { background: var(--teal); color: #fff; }
+.btn-primary:active { background: #009ab8; }
+.btn-secondary { background: var(--navy-mid); color: var(--text); border: 1px solid var(--border); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:active { background: #e83e4e; }
+.btn-sm { padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+.btn-icon {
+  width: 44px; height: 44px; padding: 0;
+  border-radius: var(--radius-full);
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Status badges */
+.status-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.3px;
+}
+.status-connected { background: var(--success-dim); color: var(--success); }
+.status-disconnected { background: var(--danger-dim); color: var(--danger); }
+.status-simulated { background: var(--teal-dim); color: var(--teal); }
+
+/* Pull-to-refresh */
+.ptr-indicator {
+  display: flex; justify-content: center;
+  padding: 0; height: 0;
+  overflow: hidden;
+  transition: height 0.2s ease, padding 0.2s ease;
+  color: var(--teal);
+}
+.ptr-indicator.pulling { height: 40px; padding: 8px 0; }
+.ptr-indicator.refreshing { height: 40px; padding: 8px 0; }
+.ptr-indicator svg { width: 24px; height: 24px; }
+.ptr-indicator.refreshing svg { animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Empty state */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 12px;
+  padding: 48px 32px; text-align: center;
+}
+.empty-state svg { width: 48px; height: 48px; color: var(--text-muted); opacity: 0.5; }
+.empty-state p { font-size: 14px; color: var(--text-dim); line-height: 1.5; }
+
+/* Toast */
+.toast-container {
+  position: fixed;
+  top: calc(var(--header-height) + var(--safe-top) + 8px);
+  left: 16px; right: 16px;
+  z-index: 150;
+  display: flex; flex-direction: column; gap: 8px;
+  pointer-events: none;
+}
+.toast {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  font-size: 13px;
+  display: flex; align-items: center; gap: 10px;
+  pointer-events: auto;
+  animation: slideDown 0.3s ease;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+.toast.success { border-left: 3px solid var(--success); }
+.toast.error { border-left: 3px solid var(--danger); }
+.toast.warning { border-left: 3px solid var(--warning); }
+.toast.info { border-left: 3px solid var(--teal); }
+@keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } }
+
+/* Scrollbar styling */
+.tab-pane::-webkit-scrollbar { width: 3px; }
+.tab-pane::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ═══════════════════════════════════════════════════════════
+   TAB 1: DEVICES
+   ═══════════════════════════════════════════════════════════ */
+
+.device-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px;
+}
+.device-icon {
+  width: 44px; height: 44px;
+  background: var(--teal-dim);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.device-icon svg { width: 22px; height: 22px; color: var(--teal); }
+.device-icon.active-device { background: var(--teal); }
+.device-icon.active-device svg { color: #fff; }
+
+.device-info { flex: 1; min-width: 0; }
+.device-name {
+  font-size: 15px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.device-meta {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 3px;
+}
+.device-type { font-size: 12px; color: var(--text-dim); }
+
+.device-right {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+}
+.device-battery {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: 600;
+}
+.device-battery.low { color: var(--danger); }
+.device-battery.mid { color: var(--warning); }
+.device-battery.high { color: var(--success); }
+
+.fab-add {
+  position: fixed;
+  bottom: calc(var(--tab-height) + var(--safe-bottom) + 16px);
+  right: 16px;
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--teal), var(--accent));
+  border: none;
+  color: #fff;
+  font-size: 28px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 20px rgba(0,180,216,0.4);
+  z-index: 30;
+  cursor: pointer;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+.fab-add:active { transform: scale(0.92); }
+
+/* ═══════════════════════════════════════════════════════════
+   TAB 2: CONTROL
+   ═══════════════════════════════════════════════════════════ */
+
+.control-pane { display: flex; flex-direction: column; overflow: hidden; }
+
+/* NLP Command Bar */
+.nlp-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px;
+  background: var(--navy-light);
+  border-bottom: 1px solid var(--border);
+}
+.nlp-input-wrap {
+  flex: 1;
+  display: flex; align-items: center;
+  background: var(--navy-mid);
+  border-radius: 22px;
+  border: 1px solid var(--border);
+  padding: 0 4px 0 14px;
+  height: 40px;
+  transition: border-color var(--transition);
+}
+.nlp-input-wrap:focus-within { border-color: var(--teal); }
+.nlp-input {
+  flex: 1;
+  background: none; border: none; outline: none;
+  color: var(--text);
+  font-size: 14px;
+  font-family: var(--font);
+}
+.nlp-input::placeholder { color: var(--text-muted); }
+
+.mic-btn {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: none; border: none;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.mic-btn.listening {
+  color: var(--danger);
+  animation: pulse 1s infinite;
+  background: var(--danger-dim);
+}
+.mic-btn svg { width: 20px; height: 20px; }
+
+/* Telemetry strip */
+.telemetry-strip {
+  display: flex; justify-content: space-around;
+  padding: 8px 16px;
+  background: var(--navy-light);
+  border-bottom: 1px solid var(--border);
+}
+.telem-item {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.telem-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.telem-value { font-size: 14px; font-weight: 700; font-family: var(--mono); }
+
+/* Joystick area */
+.joystick-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 16px;
+  position: relative;
+  min-height: 280px;
+}
+
+.joystick-container {
+  position: relative;
+  width: 160px; height: 160px;
+  flex-shrink: 0;
+}
+.joystick-base {
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, var(--navy-mid) 0%, var(--navy-light) 100%);
+  border: 2px solid var(--border);
+  position: relative;
+}
+.joystick-base::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 8px; height: 8px;
+  transform: translate(-50%, -50%);
+  background: var(--text-muted);
+  border-radius: 50%;
+  opacity: 0.4;
+}
+.joystick-knob {
+  position: absolute;
+  width: 56px; height: 56px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, var(--teal), #008fa8);
+  box-shadow: 0 2px 12px rgba(0,180,216,0.4), inset 0 1px 2px rgba(255,255,255,0.2);
+  transition: box-shadow var(--transition);
+  cursor: grab;
+  touch-action: none;
+}
+.joystick-knob.active {
+  box-shadow: 0 2px 20px rgba(0,180,216,0.6), inset 0 1px 2px rgba(255,255,255,0.2);
+  cursor: grabbing;
+}
+.joystick-label {
+  position: absolute;
+  bottom: -24px; left: 0; right: 0;
+  text-align: center;
+  font-size: 11px; font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* D-pad mode */
+.dpad {
+  display: none;
+  width: 160px; height: 160px;
+  position: relative;
+}
+.dpad.visible { display: block; }
+.dpad-btn {
+  position: absolute;
+  width: 50px; height: 50px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.dpad-btn:active { background: var(--teal-dim); color: var(--teal); border-color: var(--teal); }
+.dpad-btn svg { width: 20px; height: 20px; }
+.dpad-up { top: 0; left: 55px; }
+.dpad-down { bottom: 0; left: 55px; }
+.dpad-left { top: 55px; left: 0; }
+.dpad-right { top: 55px; right: 0; }
+.dpad-center { top: 55px; left: 55px; background: var(--navy-mid); }
+
+/* Quick action buttons */
+.quick-actions {
+  display: flex; gap: 10px;
+  padding: 0 16px 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.quick-actions::-webkit-scrollbar { display: none; }
+
+.action-btn {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 4px;
+  padding: 10px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  white-space: nowrap;
+  min-width: 68px;
+  transition: all var(--transition);
+}
+.action-btn:active { background: var(--card-hover); transform: scale(0.95); }
+.action-btn svg { width: 22px; height: 22px; }
+.action-btn span { font-size: 10px; font-weight: 600; color: var(--text-dim); }
+.action-btn.takeoff { color: var(--success); }
+.action-btn.land { color: var(--teal); }
+.action-btn.home { color: var(--warning); }
+.action-btn.estop {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+  min-width: 80px;
+}
+.action-btn.estop span { color: #fff; }
+
+/* Mode toggle */
+.mode-toggle {
+  display: flex; justify-content: center; gap: 8px;
+  padding: 0 16px 10px;
+}
+.mode-btn {
+  padding: 6px 16px;
+  background: var(--navy-mid);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.mode-btn.active { background: var(--teal-dim); color: var(--teal); border-color: var(--teal); }
+
+/* ═══════════════════════════════════════════════════════════
+   TAB 3: CAMERA / 3D
+   ═══════════════════════════════════════════════════════════ */
+
+.view3d-pane { display: flex; flex-direction: column; }
+
+.view3d-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px;
+  background: var(--navy-light);
+  border-bottom: 1px solid var(--border);
+}
+.view3d-toolbar .btn-sm { flex-shrink: 0; }
+
+#canvas3d-mobile {
+  flex: 1;
+  width: 100%;
+  display: block;
+  touch-action: none;
+  background: var(--navy);
+}
+
+.view3d-info {
+  display: flex; justify-content: space-around;
+  padding: 8px 16px;
+  background: var(--navy-light);
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+}
+.view3d-info .telem-item { flex-direction: row; gap: 6px; }
+
+/* ═══════════════════════════════════════════════════════════
+   TAB 4: MISSIONS
+   ═══════════════════════════════════════════════════════════ */
+
+.mission-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px;
+}
+.mission-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.mission-icon.patrol { background: var(--teal-dim); color: var(--teal); }
+.mission-icon.search { background: var(--warning-dim); color: var(--warning); }
+.mission-icon.sentry { background: var(--danger-dim); color: var(--danger); }
+.mission-icon.pickplace { background: var(--success-dim); color: var(--success); }
+.mission-icon.custom { background: rgba(160,120,255,0.15); color: #a078ff; }
+
+.mission-info { flex: 1; min-width: 0; }
+.mission-name { font-size: 15px; font-weight: 600; }
+.mission-desc { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+
+.mission-status {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px; font-weight: 600;
+}
+.mission-status.idle { background: var(--navy-mid); color: var(--text-muted); }
+.mission-status.running { background: var(--teal-dim); color: var(--teal); }
+.mission-status.completed { background: var(--success-dim); color: var(--success); }
+.mission-status.failed { background: var(--danger-dim); color: var(--danger); }
+
+.mission-actions {
+  display: flex; gap: 8px;
+  flex-shrink: 0;
+}
+
+.mission-progress {
+  margin: 0 16px 10px;
+  height: 4px;
+  background: var(--navy-mid);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.mission-progress .bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--teal), var(--accent));
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.quick-missions {
+  display: flex; gap: 10px;
+  padding: 4px 16px 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.quick-missions::-webkit-scrollbar { display: none; }
+
+.quick-mission-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  font-size: 13px; font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.quick-mission-btn:active { background: var(--teal-dim); border-color: var(--teal); }
+.quick-mission-btn svg { width: 16px; height: 16px; color: var(--teal); }
+
+/* ═══════════════════════════════════════════════════════════
+   TAB 5: MORE / SETTINGS
+   ═══════════════════════════════════════════════════════════ */
+
+.settings-group { margin-bottom: 16px; }
+.settings-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.settings-item:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+.settings-item:last-child { border-radius: 0 0 var(--radius) var(--radius); border-bottom: none; }
+.settings-item:only-child { border-radius: var(--radius); }
+.settings-item:active { background: var(--card-hover); }
+
+.settings-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.settings-icon svg { width: 18px; height: 18px; }
+.settings-icon.blue { background: rgba(0,140,255,0.15); color: #008cff; }
+.settings-icon.teal { background: var(--teal-dim); color: var(--teal); }
+.settings-icon.purple { background: rgba(140,100,255,0.15); color: #8c64ff; }
+.settings-icon.orange { background: var(--warning-dim); color: var(--warning); }
+.settings-icon.green { background: var(--success-dim); color: var(--success); }
+.settings-icon.red { background: var(--danger-dim); color: var(--danger); }
+
+.settings-label { flex: 1; font-size: 15px; }
+.settings-value { font-size: 13px; color: var(--text-dim); }
+.settings-chevron { color: var(--text-muted); }
+.settings-chevron svg { width: 16px; height: 16px; }
+
+/* Toggle switch */
+.toggle {
+  width: 48px; height: 28px;
+  background: var(--navy-mid);
+  border-radius: 14px;
+  position: relative;
+  cursor: pointer;
+  transition: background var(--transition);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.toggle.on { background: var(--teal); border-color: var(--teal); }
+.toggle::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 20px; height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform var(--transition);
+}
+.toggle.on::after { transform: translateX(20px); }
+
+/* ═══════════════════════════════════════════════════════════
+   LANDSCAPE MODE
+   ═══════════════════════════════════════════════════════════ */
+
+@media (orientation: landscape) and (max-height: 500px) {
+  .header { height: 40px; min-height: 40px; padding-top: 0; }
+  .header-logo span { font-size: 14px; }
+  .tab-bar { height: 48px; }
+  .tab-item { font-size: 0; gap: 0; } /* Hide labels in landscape */
+  .tab-item svg { width: 20px; height: 20px; }
+  :root { --header-height: 40px; --tab-height: 48px; }
+
+  .joystick-area { padding: 8px; gap: 40px; min-height: unset; }
+  .joystick-container { width: 130px; height: 130px; }
+  .joystick-knob { width: 48px; height: 48px; }
+  .nlp-bar { display: none; }
+  .telemetry-strip { padding: 4px 16px; }
+  .quick-actions { padding: 0 8px 6px; }
+  .action-btn { padding: 6px 10px; min-width: 56px; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MODAL OVERLAY
+   ═══════════════════════════════════════════════════════════ */
+
+.modal-overlay {
+  display: none;
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 100;
+  justify-content: center;
+  align-items: flex-end;
+}
+.modal-overlay.show { display: flex; }
+.modal-sheet {
+  background: var(--navy-light);
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 8px 0 calc(16px + var(--safe-bottom));
+  animation: slideUp 0.3s ease;
+}
+@keyframes slideUp { from { transform: translateY(100%); } }
+.modal-handle {
+  width: 36px; height: 4px;
+  background: var(--border-light);
+  border-radius: 2px;
+  margin: 8px auto 16px;
+}
+.modal-title {
+  font-size: 18px; font-weight: 700;
+  padding: 0 20px 12px;
+}
+</style>
+</head>
+
+<body>
+<div id="app">
+
+  <!-- Offline Banner -->
+  <div id="offline-banner">OFFLINE — Commands will be queued</div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-logo">
+      <svg viewBox="0 0 28 28" fill="none">
+        <circle cx="14" cy="14" r="12" stroke="url(#gH)" stroke-width="2" fill="none"/>
+        <circle cx="14" cy="14" r="7" stroke="url(#gH)" stroke-width="1.5" fill="none" opacity="0.5"/>
+        <circle cx="14" cy="14" r="2.5" fill="url(#gH)"/>
+        <defs><linearGradient id="gH" x1="0" y1="0" x2="28" y2="28">
+          <stop stop-color="#00b4d8"/><stop offset="1" stop-color="#00d2b4"/>
+        </linearGradient></defs>
+      </svg>
+      <span>OMNIX</span>
+    </div>
+    <div class="header-status">
+      <div class="header-battery" id="hdr-battery">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="18" height="10" rx="2"/><line x1="22" y1="11" x2="22" y2="13"/></svg>
+        <span id="hdr-battery-pct">--</span>
+      </div>
+      <div class="conn-dot" id="conn-indicator" title="Connection status"></div>
+    </div>
+  </header>
+
+  <!-- Tab Content -->
+  <div class="tab-content">
+
+    <!-- ═══ TAB 1: DEVICES ═══ -->
+    <div id="pane-devices" class="tab-pane active">
+      <div class="ptr-indicator" id="ptr-devices">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+      </div>
+      <div class="section-title">Active Device</div>
+      <div id="active-device-card"></div>
+      <div class="section-title">All Devices</div>
+      <div id="device-list"></div>
+      <button class="fab-add" id="btn-add-device" aria-label="Add device">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+
+    <!-- ═══ TAB 2: CONTROL ═══ -->
+    <div id="pane-control" class="tab-pane control-pane">
+      <!-- NLP Bar -->
+      <div class="nlp-bar">
+        <div class="nlp-input-wrap">
+          <input id="nlp-input" class="nlp-input" type="text" placeholder="fly forward 3 meters..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+          <button class="mic-btn" id="mic-btn" aria-label="Voice command">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Telemetry Strip -->
+      <div class="telemetry-strip">
+        <div class="telem-item"><span class="telem-label">Battery</span><span class="telem-value" id="telem-batt">--%</span></div>
+        <div class="telem-item"><span class="telem-label">Alt</span><span class="telem-value" id="telem-alt">--m</span></div>
+        <div class="telem-item"><span class="telem-label">Speed</span><span class="telem-value" id="telem-speed">--m/s</span></div>
+        <div class="telem-item"><span class="telem-label">Signal</span><span class="telem-value" id="telem-signal">--</span></div>
+      </div>
+
+      <!-- Control mode toggle -->
+      <div class="mode-toggle">
+        <button class="mode-btn active" data-mode="joystick">Joystick</button>
+        <button class="mode-btn" data-mode="dpad">D-Pad</button>
+        <button class="mode-btn" data-mode="gesture">Gesture</button>
+      </div>
+
+      <!-- Joystick Area -->
+      <div class="joystick-area" id="joystick-area">
+        <!-- Joystick: Left (throttle/yaw for drones) -->
+        <div class="joystick-container" id="joy-left">
+          <div class="joystick-base">
+            <div class="joystick-knob" id="knob-left"></div>
+          </div>
+          <div class="joystick-label">Throttle / Yaw</div>
+        </div>
+        <!-- Joystick: Right (pitch/roll for drones) -->
+        <div class="joystick-container" id="joy-right">
+          <div class="joystick-base">
+            <div class="joystick-knob" id="knob-right"></div>
+          </div>
+          <div class="joystick-label">Pitch / Roll</div>
+        </div>
+        <!-- D-Pad (alternative mode) -->
+        <div class="dpad" id="dpad">
+          <button class="dpad-btn dpad-up" data-dir="forward"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg></button>
+          <button class="dpad-btn dpad-down" data-dir="backward"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
+          <button class="dpad-btn dpad-left" data-dir="left"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg></button>
+          <button class="dpad-btn dpad-right" data-dir="right"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 6 15 12 9 18"/></svg></button>
+          <div class="dpad-btn dpad-center"><svg viewBox="0 0 24 24" fill="currentColor" opacity="0.3"><circle cx="12" cy="12" r="4"/></svg></div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="quick-actions">
+        <button class="action-btn takeoff" data-action="takeoff">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 19V5m0 0l-7 7m7-7l7 7"/></svg>
+          <span>Takeoff</span>
+        </button>
+        <button class="action-btn land" data-action="land">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14m0 0l-7-7m7 7l7-7"/></svg>
+          <span>Land</span>
+        </button>
+        <button class="action-btn home" data-action="home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12l9-9 9 9"/><path d="M9 21V12h6v9"/></svg>
+          <span>Home</span>
+        </button>
+        <button class="action-btn estop" data-action="estop" id="btn-estop">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+          <span>E-STOP</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══ TAB 3: CAMERA / 3D ═══ -->
+    <div id="pane-view3d" class="tab-pane view3d-pane">
+      <div class="view3d-toolbar">
+        <button class="btn btn-sm btn-secondary" id="btn-view-3d" style="background:var(--teal-dim);color:var(--teal);border-color:var(--teal)">3D View</button>
+        <button class="btn btn-sm btn-secondary" id="btn-view-cam">Camera</button>
+        <div style="flex:1"></div>
+        <button class="btn btn-sm btn-secondary" id="btn-reset-cam">Reset</button>
+      </div>
+      <canvas id="canvas3d-mobile"></canvas>
+      <div class="view3d-info">
+        <div class="telem-item"><span class="telem-label">X</span><span class="telem-value" id="pos-x">0.0</span></div>
+        <div class="telem-item"><span class="telem-label">Y</span><span class="telem-value" id="pos-y">0.0</span></div>
+        <div class="telem-item"><span class="telem-label">Z</span><span class="telem-value" id="pos-z">0.0</span></div>
+        <div class="telem-item"><span class="telem-label">Heading</span><span class="telem-value" id="pos-hdg">0°</span></div>
+      </div>
+    </div>
+
+    <!-- ═══ TAB 4: MISSIONS ═══ -->
+    <div id="pane-missions" class="tab-pane">
+      <div class="section-title">Quick Launch</div>
+      <div class="quick-missions">
+        <button class="quick-mission-btn" data-mission="patrol">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Patrol
+        </button>
+        <button class="quick-mission-btn" data-mission="return_home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9"/><path d="M9 21V12h6v9"/></svg>
+          Return Home
+        </button>
+        <button class="quick-mission-btn" data-mission="scan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Scan Area
+        </button>
+        <button class="quick-mission-btn" data-mission="hover">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.73 12.73l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+          Hold Position
+        </button>
+      </div>
+
+      <div class="section-title">Saved Missions</div>
+      <div id="mission-list"></div>
+    </div>
+
+    <!-- ═══ TAB 5: MORE ═══ -->
+    <div id="pane-more" class="tab-pane">
+      <div style="padding:20px 16px 8px;display:flex;align-items:center;gap:12px">
+        <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--accent));display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff" id="user-avatar">G</div>
+        <div>
+          <div style="font-size:16px;font-weight:600" id="user-name">Guest User</div>
+          <div style="font-size:13px;color:var(--text-dim)" id="user-role">Viewer</div>
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-top:16px">Connection</div>
+      <div class="settings-group" style="margin:0 16px">
+        <div class="settings-item" id="setting-server">
+          <div class="settings-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></div>
+          <span class="settings-label">Server URL</span>
+          <span class="settings-value" id="server-url-display">Auto</span>
+          <span class="settings-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+        </div>
+        <div class="settings-item" id="setting-collab">
+          <div class="settings-icon purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+          <span class="settings-label">Collaboration</span>
+          <span class="settings-value" id="collab-status">Not in session</span>
+          <span class="settings-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+        </div>
+      </div>
+
+      <div class="section-title">Preferences</div>
+      <div class="settings-group" style="margin:0 16px">
+        <div class="settings-item" id="setting-theme">
+          <div class="settings-icon orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></div>
+          <span class="settings-label">Dark Mode</span>
+          <div class="toggle on" id="toggle-theme"></div>
+        </div>
+        <div class="settings-item" id="setting-haptics">
+          <div class="settings-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5.5 8.5L9 12l-3.5 3.5"/><path d="M2 8.5L5.5 12 2 15.5"/><path d="M12.5 2L16 5.5 12.5 9"/><path d="M12.5 15L16 18.5 12.5 22"/></svg></div>
+          <span class="settings-label">Haptic Feedback</span>
+          <div class="toggle on" id="toggle-haptics"></div>
+        </div>
+        <div class="settings-item" id="setting-sensitivity">
+          <div class="settings-icon teal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></div>
+          <span class="settings-label">Joystick Sensitivity</span>
+          <span class="settings-value" id="sensitivity-val">Medium</span>
+          <span class="settings-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+        </div>
+      </div>
+
+      <div class="section-title">Explore</div>
+      <div class="settings-group" style="margin:0 16px">
+        <div class="settings-item" id="setting-marketplace">
+          <div class="settings-icon teal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 7v13a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V7l-3-5z"/><line x1="3" y1="7" x2="21" y2="7"/><path d="M16 11a4 4 0 0 1-8 0"/></svg></div>
+          <span class="settings-label">Marketplace</span>
+          <span class="settings-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+        </div>
+        <div class="settings-item" id="setting-about">
+          <div class="settings-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></div>
+          <span class="settings-label">About OMNIX</span>
+          <span class="settings-value">v1.0 PWA</span>
+          <span class="settings-chevron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>
+        </div>
+      </div>
+
+      <div style="text-align:center;padding:24px;color:var(--text-muted);font-size:12px">
+        OMNIX Universal Robotics Platform<br>Made with care for the robotics community
+      </div>
+    </div>
+
+  </div><!-- /tab-content -->
+
+  <!-- Bottom Tab Bar -->
+  <nav class="tab-bar">
+    <button class="tab-item active" data-tab="devices">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="2"/><circle cx="9" cy="9" r="1.5" fill="currentColor" stroke="none"/><circle cx="15" cy="9" r="1.5" fill="currentColor" stroke="none"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg>
+      <span>Devices</span>
+    </button>
+    <button class="tab-item" data-tab="control">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>
+      <span>Control</span>
+    </button>
+    <button class="tab-item" data-tab="view3d">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      <span>3D/Cam</span>
+    </button>
+    <button class="tab-item" data-tab="missions">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      <span>Missions</span>
+    </button>
+    <button class="tab-item" data-tab="more">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+      <span>More</span>
+    </button>
+  </nav>
+
+</div><!-- /app -->
+
+<!-- Install Prompt -->
+<div id="install-prompt">
+  <div class="install-card">
+    <h3>Install OMNIX</h3>
+    <p>Add OMNIX to your home screen for the full native app experience — works offline!</p>
+    <div class="install-btns">
+      <button class="btn-dismiss" onclick="dismissInstall()">Not Now</button>
+      <button class="btn-install" onclick="doInstall()">Install</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Modal: Add Device -->
+<div class="modal-overlay" id="modal-add-device">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Add Device</div>
+    <div style="padding:0 20px 16px">
+      <div class="section-title" style="padding:0 0 8px">From Template</div>
+      <div id="device-templates" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div class="section-title" style="padding:16px 0 8px">Manual</div>
+      <input id="new-device-name" type="text" placeholder="Device name..." style="width:100%;padding:12px;background:var(--navy-mid);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px;outline:none;margin-bottom:8px">
+      <select id="new-device-type" style="width:100%;padding:12px;background:var(--navy-mid);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px;outline:none;margin-bottom:12px;-webkit-appearance:none">
+        <option value="drone">Drone</option>
+        <option value="rover">Rover</option>
+        <option value="arm">Robotic Arm</option>
+        <option value="custom">Custom Robot</option>
+      </select>
+      <button class="btn btn-primary" style="width:100%" onclick="addDeviceManual()">Add Device</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Server Settings -->
+<div class="modal-overlay" id="modal-server">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Server Connection</div>
+    <div style="padding:0 20px 16px">
+      <label style="font-size:13px;color:var(--text-dim);margin-bottom:6px;display:block">Server URL</label>
+      <input id="server-url-input" type="url" placeholder="http://localhost:8000" style="width:100%;padding:12px;background:var(--navy-mid);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px;outline:none;margin-bottom:12px">
+      <label style="font-size:13px;color:var(--text-dim);margin-bottom:6px;display:block">Auth Token (optional)</label>
+      <input id="auth-token-input" type="password" placeholder="Bearer token..." style="width:100%;padding:12px;background:var(--navy-mid);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px;outline:none;margin-bottom:16px">
+      <button class="btn btn-primary" style="width:100%" onclick="saveServerSettings()">Save & Reconnect</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     Three.js (from CDN, lightweight)
+     ═══════════════════════════════════════════════════════════ -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   OMNIX Mobile — Application Logic
+   Zero external dependencies (aside from Three.js CDN)
+   ═══════════════════════════════════════════════════════════ */
+
+'use strict';
+
+/* ── Global State ── */
+const State = {
+  devices: [],
+  activeDevice: null,
+  missions: [],
+  connected: false,
+  wsConnected: false,
+  online: navigator.onLine,
+  theme: 'dark',
+  haptics: true,
+  sensitivity: 1.0, // 0.5 = low, 1.0 = med, 1.5 = high
+  controlMode: 'joystick', // joystick | dpad | gesture
+  serverUrl: '',
+  authToken: '',
+  telemetry: { battery: null, altitude: null, speed: null, signal: null, x: 0, y: 0, z: 0, heading: 0 },
+  commandQueue: [],
+  ws: null,
+  wsReconnectDelay: 1000,
+  wsReconnectTimer: null,
+  voiceListening: false,
+  speechRecognition: null,
+};
+
+/* ── Config ── */
+const API_BASE = () => State.serverUrl || `${location.protocol}//${location.hostname}:${location.port || (location.protocol === 'https:' ? 443 : 8000)}`;
+const WS_BASE = () => {
+  const base = API_BASE();
+  return base.replace(/^http/, 'ws').replace(/:\d+/, ':8766');
+};
+const HEADERS = () => {
+  const h = { 'Content-Type': 'application/json' };
+  if (State.authToken) h['Authorization'] = `Bearer ${State.authToken}`;
+  return h;
+};
+
+/* ═══════════════════════════════════════════════════════════
+   SERVICE WORKER & PWA INSTALL
+   ═══════════════════════════════════════════════════════════ */
+
+let deferredInstallPrompt = null;
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/mobile/sw.js', { scope: '/mobile' })
+    .then(reg => console.log('[SW] registered', reg.scope))
+    .catch(err => console.warn('[SW] registration failed', err));
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  // Show install banner after 5 seconds if not already installed
+  setTimeout(() => {
+    if (deferredInstallPrompt && !window.matchMedia('(display-mode: standalone)').matches) {
+      document.getElementById('install-prompt').classList.add('show');
+    }
+  }, 5000);
+});
+
+function doInstall() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.then(result => {
+    deferredInstallPrompt = null;
+    document.getElementById('install-prompt').classList.remove('show');
+    if (result.outcome === 'accepted') showToast('OMNIX installed!', 'success');
+  });
+}
+function dismissInstall() {
+  document.getElementById('install-prompt').classList.remove('show');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TAB NAVIGATION
+   ═══════════════════════════════════════════════════════════ */
+
+const tabButtons = document.querySelectorAll('.tab-item');
+const tabPanes = document.querySelectorAll('.tab-pane');
+let currentTab = 'devices';
+
+tabButtons.forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+function switchTab(tabId) {
+  if (currentTab === tabId) return;
+  const prevTab = currentTab;
+  currentTab = tabId;
+
+  tabButtons.forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+  tabPanes.forEach(p => p.classList.toggle('active', p.id === `pane-${tabId}`));
+
+  haptic(10);
+
+  // Lazy init 3D when switching to view tab
+  if (tabId === 'view3d' && !threeInited) initThreeJS();
+  // Destroy 3D when leaving to save memory
+  if (prevTab === 'view3d' && threeInited) pauseThreeJS();
+  if (tabId === 'view3d' && threeInited) resumeThreeJS();
+
+  // Handle hash navigation
+  history.replaceState(null, '', `#${tabId}`);
+}
+
+// Restore tab from hash
+if (location.hash) {
+  const hashTab = location.hash.slice(1);
+  if (['devices','control','view3d','missions','more'].includes(hashTab)) {
+    switchTab(hashTab);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TOAST NOTIFICATIONS
+   ═══════════════════════════════════════════════════════════ */
+
+function showToast(message, type = 'info', duration = 3000) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<span>${message}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-10px)';
+    toast.style.transition = '0.3s ease';
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   HAPTIC FEEDBACK
+   ═══════════════════════════════════════════════════════════ */
+
+function haptic(ms = 15) {
+  if (State.haptics && navigator.vibrate) {
+    navigator.vibrate(ms);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   API HELPERS
+   ═══════════════════════════════════════════════════════════ */
+
+async function api(path, method = 'GET', body = null) {
+  const opts = { method, headers: HEADERS() };
+  if (body) opts.body = JSON.stringify(body);
+  try {
+    const res = await fetch(`${API_BASE()}${path}`, opts);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    if (!State.online && body) {
+      // Queue command for offline replay
+      State.commandQueue.push({ url: `${API_BASE()}${path}`, method, body, headers: HEADERS() });
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          type: 'QUEUE_COMMAND',
+          payload: { url: `${API_BASE()}${path}`, method, body, headers: HEADERS() },
+        });
+      }
+      showToast('Command queued for when online', 'warning');
+      return null;
+    }
+    throw err;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DEVICE MANAGEMENT (TAB 1)
+   ═══════════════════════════════════════════════════════════ */
+
+async function loadDevices() {
+  try {
+    // Try compact mobile endpoint first, fall back to standard
+    let data;
+    try {
+      data = await api('/api/mobile/dashboard');
+      if (data && data.devices) {
+        State.devices = data.devices;
+        if (data.telemetry) Object.assign(State.telemetry, data.telemetry);
+      }
+    } catch (_) {
+      data = await api('/api/devices');
+      State.devices = Array.isArray(data) ? data : (data.devices || []);
+    }
+    renderDevices();
+    updateTelemetryUI();
+    if (!State.activeDevice && State.devices.length > 0) {
+      setActiveDevice(State.devices[0]);
+    }
+    updateConnectionStatus(true);
+  } catch (err) {
+    console.warn('[Devices] load failed:', err);
+    updateConnectionStatus(false);
+  }
+}
+
+function renderDevices() {
+  const list = document.getElementById('device-list');
+  const activeCard = document.getElementById('active-device-card');
+
+  if (!State.devices.length) {
+    list.innerHTML = `<div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="16" height="16" rx="2"/><circle cx="9" cy="9" r="1.5"/><circle cx="15" cy="9" r="1.5"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/></svg>
+      <p>No devices yet.<br>Tap + to add your first robot.</p>
+    </div>`;
+    activeCard.innerHTML = '';
+    return;
+  }
+
+  // Active device card
+  if (State.activeDevice) {
+    const d = State.activeDevice;
+    activeCard.innerHTML = `<div class="card device-card" style="border-color:var(--teal);background:rgba(0,180,216,0.05)">
+      <div class="device-icon active-device">${deviceIcon(d.device_type || d.type)}</div>
+      <div class="device-info">
+        <div class="device-name">${esc(d.name || d.device_id || d.id)}</div>
+        <div class="device-meta">
+          <span class="device-type">${esc(d.device_type || d.type || 'unknown')}</span>
+          <span class="status-badge status-${d.status || 'simulated'}">${d.status || 'simulated'}</span>
+        </div>
+      </div>
+      <div class="device-right">
+        ${batteryBadge(d.battery)}
+      </div>
+    </div>`;
+  }
+
+  // All devices
+  list.innerHTML = State.devices
+    .filter(d => !State.activeDevice || (d.device_id || d.id) !== (State.activeDevice.device_id || State.activeDevice.id))
+    .map(d => `<div class="card device-card" onclick="setActiveDevice(findDevice('${d.device_id || d.id}'))">
+      <div class="device-icon">${deviceIcon(d.device_type || d.type)}</div>
+      <div class="device-info">
+        <div class="device-name">${esc(d.name || d.device_id || d.id)}</div>
+        <div class="device-meta">
+          <span class="device-type">${esc(d.device_type || d.type || 'unknown')}</span>
+          <span class="status-badge status-${d.status || 'simulated'}">${d.status || 'simulated'}</span>
+        </div>
+      </div>
+      <div class="device-right">
+        ${batteryBadge(d.battery)}
+      </div>
+    </div>`).join('');
+}
+
+function findDevice(id) {
+  return State.devices.find(d => (d.device_id || d.id) === id);
+}
+
+function setActiveDevice(device) {
+  if (!device) return;
+  State.activeDevice = device;
+  haptic(20);
+  renderDevices();
+  loadMissions();
+  showToast(`Active: ${device.name || device.device_id || device.id}`, 'info');
+
+  // Update joystick layout based on device type
+  updateControlLayout(device.device_type || device.type);
+}
+
+function updateControlLayout(type) {
+  const joyLeft = document.getElementById('joy-left');
+  const joyRight = document.getElementById('joy-right');
+
+  if (type === 'rover' || type === 'arm') {
+    // Single joystick for rovers/arms
+    joyLeft.style.display = 'none';
+    joyRight.querySelector('.joystick-label').textContent = type === 'arm' ? 'X / Y Axis' : 'Drive';
+  } else {
+    // Dual joystick for drones
+    joyLeft.style.display = '';
+    joyLeft.querySelector('.joystick-label').textContent = 'Throttle / Yaw';
+    joyRight.querySelector('.joystick-label').textContent = 'Pitch / Roll';
+  }
+}
+
+function deviceIcon(type) {
+  const icons = {
+    drone: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.73 12.73l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>',
+    rover: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="8" rx="2"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/><path d="M7 8V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/></svg>',
+    arm: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20v-8l-4-4"/><path d="M8 8l4-4 4 4"/><path d="M16 8l-4 4"/><circle cx="12" cy="20" r="2"/></svg>',
+  };
+  return icons[type] || icons.drone;
+}
+
+function batteryBadge(level) {
+  if (level == null) return '';
+  const cls = level < 20 ? 'low' : level < 50 ? 'mid' : 'high';
+  return `<span class="device-battery ${cls}">${level}%</span>`;
+}
+
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* Pull to refresh */
+let ptrStartY = 0, ptrActive = false;
+const ptrEl = document.getElementById('ptr-devices');
+const devicesPane = document.getElementById('pane-devices');
+
+devicesPane.addEventListener('touchstart', (e) => {
+  if (devicesPane.scrollTop === 0) {
+    ptrStartY = e.touches[0].clientY;
+    ptrActive = true;
+  }
+}, { passive: true });
+
+devicesPane.addEventListener('touchmove', (e) => {
+  if (!ptrActive) return;
+  const dy = e.touches[0].clientY - ptrStartY;
+  if (dy > 0 && dy < 120) {
+    ptrEl.classList.add('pulling');
+  }
+}, { passive: true });
+
+devicesPane.addEventListener('touchend', () => {
+  if (ptrEl.classList.contains('pulling')) {
+    ptrEl.classList.remove('pulling');
+    ptrEl.classList.add('refreshing');
+    loadDevices().finally(() => {
+      setTimeout(() => ptrEl.classList.remove('refreshing'), 500);
+    });
+  }
+  ptrActive = false;
+});
+
+/* Add Device Modal */
+document.getElementById('btn-add-device').addEventListener('click', () => {
+  openModal('modal-add-device');
+  loadDeviceTemplates();
+  haptic(15);
+});
+
+async function loadDeviceTemplates() {
+  const container = document.getElementById('device-templates');
+  const templates = [
+    { name: 'Simulated Drone', type: 'drone', desc: 'Virtual quadcopter with full telemetry' },
+    { name: 'Simulated Rover', type: 'rover', desc: 'Ground robot with drive controls' },
+    { name: 'Simulated Arm', type: 'arm', desc: '6-DOF robotic arm with gripper' },
+  ];
+  container.innerHTML = templates.map(t => `
+    <div class="card" style="margin:0;cursor:pointer" onclick="addDeviceFromTemplate('${t.type}','${t.name}')">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="device-icon">${deviceIcon(t.type)}</div>
+        <div><div style="font-weight:600;font-size:14px">${t.name}</div>
+        <div style="font-size:12px;color:var(--text-dim)">${t.desc}</div></div>
+      </div>
+    </div>`).join('');
+}
+
+async function addDeviceFromTemplate(type, name) {
+  closeModals();
+  try {
+    await api('/api/add_device', 'POST', { name, device_type: type, simulated: true });
+    showToast(`Added ${name}`, 'success');
+    haptic(30);
+    await loadDevices();
+  } catch (err) {
+    showToast('Failed to add device', 'error');
+  }
+}
+
+async function addDeviceManual() {
+  const name = document.getElementById('new-device-name').value.trim();
+  const type = document.getElementById('new-device-type').value;
+  if (!name) { showToast('Enter a device name', 'warning'); return; }
+  closeModals();
+  try {
+    await api('/api/add_device', 'POST', { name, device_type: type, simulated: true });
+    showToast(`Added ${name}`, 'success');
+    haptic(30);
+    await loadDevices();
+  } catch (err) {
+    showToast('Failed to add device', 'error');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   JOYSTICK CONTROLLER (TAB 2)
+   ═══════════════════════════════════════════════════════════ */
+
+class VirtualJoystick {
+  constructor(containerId, knobId, onMove) {
+    this.container = document.getElementById(containerId);
+    this.knob = document.getElementById(knobId);
+    this.onMove = onMove;
+    this.active = false;
+    this.x = 0; this.y = 0;
+    this.deadZone = 0.12;
+    this.touchId = null;
+
+    this.knob.addEventListener('touchstart', (e) => this.start(e), { passive: false });
+    document.addEventListener('touchmove', (e) => this.move(e), { passive: false });
+    document.addEventListener('touchend', (e) => this.end(e), { passive: false });
+    document.addEventListener('touchcancel', (e) => this.end(e), { passive: false });
+  }
+
+  start(e) {
+    e.preventDefault();
+    const touch = e.changedTouches[0];
+    this.touchId = touch.identifier;
+    this.active = true;
+    this.knob.classList.add('active');
+    haptic(8);
+    this.updateFromTouch(touch);
+  }
+
+  move(e) {
+    if (!this.active) return;
+    for (const touch of e.changedTouches) {
+      if (touch.identifier === this.touchId) {
+        e.preventDefault();
+        this.updateFromTouch(touch);
+        break;
+      }
+    }
+  }
+
+  end(e) {
+    if (!this.active) return;
+    for (const touch of e.changedTouches) {
+      if (touch.identifier === this.touchId) {
+        this.active = false;
+        this.touchId = null;
+        this.knob.classList.remove('active');
+        // Spring back to center
+        this.x = 0; this.y = 0;
+        this.knob.style.transform = 'translate(-50%, -50%)';
+        this.onMove(0, 0);
+        break;
+      }
+    }
+  }
+
+  updateFromTouch(touch) {
+    const rect = this.container.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const maxR = rect.width / 2 - 28; // knob radius
+
+    let dx = touch.clientX - cx;
+    let dy = touch.clientY - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // Clamp to circle
+    if (dist > maxR) {
+      dx = (dx / dist) * maxR;
+      dy = (dy / dist) * maxR;
+    }
+
+    // Normalize to -1..1
+    this.x = dx / maxR;
+    this.y = -dy / maxR; // Invert Y (up = positive)
+
+    // Apply dead zone
+    if (Math.abs(this.x) < this.deadZone) this.x = 0;
+    if (Math.abs(this.y) < this.deadZone) this.y = 0;
+
+    // Apply sensitivity
+    this.x *= State.sensitivity;
+    this.y *= State.sensitivity;
+
+    // Clamp
+    this.x = Math.max(-1, Math.min(1, this.x));
+    this.y = Math.max(-1, Math.min(1, this.y));
+
+    // Move knob visually
+    this.knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+    // Callback
+    this.onMove(this.x, this.y);
+  }
+}
+
+// Initialize joysticks
+const joyL = new VirtualJoystick('joy-left', 'knob-left', (x, y) => {
+  // Left stick: throttle (y) and yaw (x)
+  sendJoystickCommand('left', x, y);
+});
+
+const joyR = new VirtualJoystick('joy-right', 'knob-right', (x, y) => {
+  // Right stick: pitch (y) and roll (x)
+  sendJoystickCommand('right', x, y);
+});
+
+// Throttle joystick commands to 60fps
+let lastJoyCmdTime = 0;
+function sendJoystickCommand(stick, x, y) {
+  const now = performance.now();
+  if (now - lastJoyCmdTime < 16) return; // ~60fps
+  lastJoyCmdTime = now;
+
+  if (x === 0 && y === 0) return;
+
+  const deviceId = State.activeDevice?.device_id || State.activeDevice?.id;
+  if (!deviceId) return;
+
+  // Send via WebSocket for low latency if available
+  if (State.ws && State.ws.readyState === WebSocket.OPEN) {
+    State.ws.send(JSON.stringify({
+      type: 'joystick',
+      device_id: deviceId,
+      stick, x: +x.toFixed(3), y: +y.toFixed(3),
+      timestamp: Date.now(),
+    }));
+  } else {
+    // HTTP fallback (throttled more aggressively)
+    if (now - lastJoyCmdTime < 100) return;
+    api('/api/mobile/command', 'POST', {
+      device_id: deviceId,
+      command: 'joystick',
+      params: { stick, x: +x.toFixed(3), y: +y.toFixed(3) },
+    }).catch(() => {});
+  }
+}
+
+/* D-Pad Controls */
+document.querySelectorAll('.dpad-btn[data-dir]').forEach(btn => {
+  let interval = null;
+  btn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    haptic(10);
+    const dir = btn.dataset.dir;
+    sendDpadCommand(dir);
+    interval = setInterval(() => sendDpadCommand(dir), 100);
+  });
+  btn.addEventListener('touchend', () => { clearInterval(interval); });
+  btn.addEventListener('touchcancel', () => { clearInterval(interval); });
+});
+
+function sendDpadCommand(direction) {
+  const deviceId = State.activeDevice?.device_id || State.activeDevice?.id;
+  if (!deviceId) return;
+  api('/api/mobile/command', 'POST', {
+    device_id: deviceId,
+    command: 'dpad',
+    params: { direction },
+  }).catch(() => {});
+}
+
+/* Gesture Controls */
+let gestureStartX = 0, gestureStartY = 0, gestureStartTime = 0;
+const joystickArea = document.getElementById('joystick-area');
+
+joystickArea.addEventListener('touchstart', (e) => {
+  if (State.controlMode !== 'gesture') return;
+  gestureStartX = e.touches[0].clientX;
+  gestureStartY = e.touches[0].clientY;
+  gestureStartTime = Date.now();
+});
+
+joystickArea.addEventListener('touchend', (e) => {
+  if (State.controlMode !== 'gesture') return;
+  const dx = e.changedTouches[0].clientX - gestureStartX;
+  const dy = e.changedTouches[0].clientY - gestureStartY;
+  const dt = Date.now() - gestureStartTime;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  if (dist < 15 && dt < 300) {
+    // Tap — check double tap for e-stop
+    if (gestureLastTap && Date.now() - gestureLastTap < 400) {
+      executeQuickAction('estop');
+      gestureLastTap = 0;
+    } else {
+      gestureLastTap = Date.now();
+    }
+    return;
+  }
+
+  if (dist > 60 && dt < 500) {
+    // Swipe
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    if (angle < -60 && angle > -120) {
+      // Swipe up → takeoff
+      executeQuickAction('takeoff');
+    } else if (angle > 60 && angle < 120) {
+      // Swipe down → land
+      executeQuickAction('land');
+    }
+  }
+});
+let gestureLastTap = 0;
+
+/* Control Mode Toggle */
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const mode = btn.dataset.mode;
+    State.controlMode = mode;
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+
+    const joyLeft = document.getElementById('joy-left');
+    const joyRight = document.getElementById('joy-right');
+    const dpad = document.getElementById('dpad');
+
+    if (mode === 'joystick') {
+      joyLeft.style.display = ''; joyRight.style.display = ''; dpad.classList.remove('visible');
+      updateControlLayout(State.activeDevice?.device_type || State.activeDevice?.type || 'drone');
+    } else if (mode === 'dpad') {
+      joyLeft.style.display = 'none'; joyRight.style.display = 'none'; dpad.classList.add('visible');
+    } else if (mode === 'gesture') {
+      joyLeft.style.display = 'none'; joyRight.style.display = 'none'; dpad.classList.remove('visible');
+    }
+    haptic(15);
+  });
+});
+
+/* Quick Actions */
+document.querySelectorAll('.action-btn[data-action]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    executeQuickAction(btn.dataset.action);
+    haptic(btn.dataset.action === 'estop' ? 100 : 25);
+  });
+});
+
+async function executeQuickAction(action) {
+  const deviceId = State.activeDevice?.device_id || State.activeDevice?.id;
+  if (!deviceId && action !== 'estop') {
+    showToast('Select a device first', 'warning');
+    return;
+  }
+
+  const commands = {
+    takeoff: { command: 'takeoff', text: 'Taking off...' },
+    land: { command: 'land', text: 'Landing...' },
+    home: { command: 'return_home', text: 'Returning home...' },
+    estop: { command: 'emergency_stop', text: 'EMERGENCY STOP!' },
+  };
+
+  const cmd = commands[action];
+  if (!cmd) return;
+
+  showToast(cmd.text, action === 'estop' ? 'error' : 'info');
+
+  try {
+    // Try NLP compile + execute for complex commands
+    await api('/api/mobile/command', 'POST', {
+      device_id: deviceId,
+      command: cmd.command,
+      params: {},
+    });
+  } catch (_) {
+    // Fallback to NLP
+    try {
+      await api('/api/nlp/compile', 'POST', {
+        text: cmd.command.replace('_', ' '),
+        device_id: deviceId,
+        device_type: State.activeDevice?.device_type || 'drone',
+      });
+    } catch (err) {
+      showToast('Command failed', 'error');
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   NLP COMMAND BAR
+   ═══════════════════════════════════════════════════════════ */
+
+const nlpInput = document.getElementById('nlp-input');
+
+nlpInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && nlpInput.value.trim()) {
+    executeNLPCommand(nlpInput.value.trim());
+    nlpInput.value = '';
+    nlpInput.blur();
+  }
+});
+
+async function executeNLPCommand(text) {
+  const deviceId = State.activeDevice?.device_id || State.activeDevice?.id;
+  if (!deviceId) {
+    showToast('Select a device first', 'warning');
+    return;
+  }
+
+  showToast(`Compiling: "${text}"`, 'info');
+
+  try {
+    const plan = await api('/api/nlp/compile', 'POST', {
+      text,
+      device_id: deviceId,
+      device_type: State.activeDevice?.device_type || 'drone',
+    });
+
+    if (plan && plan.steps && plan.steps.length > 0) {
+      // Auto-execute the compiled plan
+      const result = await api('/api/nlp/execute', 'POST', {
+        device_id: deviceId,
+      });
+      showToast(`Executing ${plan.steps.length} step(s)`, 'success');
+
+      // Start polling execution status
+      pollExecution(deviceId);
+    } else {
+      showToast('Could not parse command', 'warning');
+    }
+  } catch (err) {
+    showToast('Command failed: ' + err.message, 'error');
+  }
+}
+
+async function pollExecution(deviceId) {
+  try {
+    const state = await api(`/api/nlp/execution/${deviceId}`);
+    if (state && state.status === 'running') {
+      setTimeout(() => pollExecution(deviceId), 300);
+    } else if (state && state.status === 'completed') {
+      showToast('Command completed', 'success');
+    } else if (state && state.status === 'failed') {
+      showToast('Command failed', 'error');
+    }
+  } catch (_) {}
+}
+
+/* ═══════════════════════════════════════════════════════════
+   VOICE CONTROL (Web Speech API)
+   ═══════════════════════════════════════════════════════════ */
+
+const micBtn = document.getElementById('mic-btn');
+
+function initVoiceControl() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    micBtn.style.display = 'none';
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  recognition.onstart = () => {
+    State.voiceListening = true;
+    micBtn.classList.add('listening');
+    nlpInput.placeholder = 'Listening...';
+  };
+
+  recognition.onresult = (event) => {
+    let transcript = '';
+    for (const result of event.results) {
+      transcript = result[0].transcript;
+    }
+
+    // Show interim results
+    nlpInput.value = transcript;
+
+    // Check if final
+    if (event.results[event.results.length - 1].isFinal) {
+      // Check for wake word
+      const text = transcript.trim();
+      const lower = text.toLowerCase();
+
+      if (lower.startsWith('omnix')) {
+        // Strip wake word and execute
+        const command = text.replace(/^omnix[,\s]*/i, '').trim();
+        if (command) {
+          executeNLPCommand(command);
+          nlpInput.value = '';
+        }
+      } else {
+        // Execute as-is if no wake word
+        executeNLPCommand(text);
+        nlpInput.value = '';
+      }
+    }
+  };
+
+  recognition.onerror = (event) => {
+    console.warn('[Voice] error:', event.error);
+    if (event.error !== 'no-speech') {
+      showToast('Voice recognition error', 'warning');
+    }
+  };
+
+  recognition.onend = () => {
+    State.voiceListening = false;
+    micBtn.classList.remove('listening');
+    nlpInput.placeholder = 'fly forward 3 meters...';
+    nlpInput.value = '';
+  };
+
+  State.speechRecognition = recognition;
+}
+
+micBtn.addEventListener('click', () => {
+  if (!State.speechRecognition) {
+    initVoiceControl();
+    if (!State.speechRecognition) {
+      showToast('Voice not supported in this browser', 'warning');
+      return;
+    }
+  }
+
+  if (State.voiceListening) {
+    State.speechRecognition.stop();
+  } else {
+    try {
+      State.speechRecognition.start();
+      haptic(20);
+    } catch (err) {
+      showToast('Voice error: ' + err.message, 'error');
+    }
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════
+   THREE.JS 3D VIEW (TAB 3) — Mobile Optimized
+   ═══════════════════════════════════════════════════════════ */
+
+let threeInited = false;
+let scene3d, camera3d, renderer3d, robotMesh, pathLine, twinMesh;
+let animFrameId = null;
+let camAngle = Math.PI / 4, camDist = 18, camHeight = 14;
+
+function initThreeJS() {
+  if (threeInited) return;
+  threeInited = true;
+
+  const canvas = document.getElementById('canvas3d-mobile');
+  const rect = canvas.parentElement.getBoundingClientRect();
+  const w = rect.width;
+  const h = rect.height - 80; // minus toolbar + info bar
+
+  scene3d = new THREE.Scene();
+  scene3d.background = new THREE.Color(0x0a1628);
+  scene3d.fog = new THREE.FogExp2(0x0a1628, 0.015);
+
+  camera3d = new THREE.PerspectiveCamera(50, w / Math.max(h, 1), 0.1, 200);
+  updateCameraPosition();
+
+  renderer3d = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'low-power' });
+  renderer3d.setSize(w, Math.max(h, 100));
+  renderer3d.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer3d.shadowMap.enabled = false; // Disable shadows for mobile perf
+  renderer3d.outputEncoding = THREE.sRGBEncoding;
+
+  // Lights (simplified for mobile)
+  scene3d.add(new THREE.AmbientLight(0x4060a0, 0.7));
+  const dirLight = new THREE.DirectionalLight(0xfff4e0, 0.9);
+  dirLight.position.set(10, 15, 8);
+  scene3d.add(dirLight);
+  scene3d.add(new THREE.HemisphereLight(0x00b4d8, 0x0a1628, 0.4));
+
+  // Ground
+  const gridHelper = new THREE.GridHelper(40, 40, 0x1e2d45, 0x141e30);
+  scene3d.add(gridHelper);
+  scene3d.add(new THREE.AxesHelper(3));
+
+  // Robot placeholder
+  createRobotMesh();
+
+  // Path line
+  const pathGeo = new THREE.BufferGeometry();
+  pathGeo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(300), 3));
+  pathLine = new THREE.Line(pathGeo, new THREE.LineBasicMaterial({ color: 0x00b4d8, opacity: 0.6, transparent: true }));
+  scene3d.add(pathLine);
+
+  // Twin ghost
+  createTwinMesh();
+
+  // Touch controls for 3D view
+  setupThreeTouchControls(canvas);
+
+  resumeThreeJS();
+}
+
+function createRobotMesh() {
+  const group = new THREE.Group();
+
+  // Body
+  const bodyGeo = new THREE.BoxGeometry(1.2, 0.4, 1.2);
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x00b4d8, metalness: 0.3, roughness: 0.6 });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.position.y = 0.2;
+  group.add(body);
+
+  // Arms
+  const armGeo = new THREE.CylinderGeometry(0.06, 0.06, 1.4);
+  const armMat = new THREE.MeshStandardMaterial({ color: 0x445566 });
+  for (let i = 0; i < 4; i++) {
+    const arm = new THREE.Mesh(armGeo, armMat);
+    arm.rotation.z = Math.PI / 2;
+    const angle = (i * Math.PI / 2) + Math.PI / 4;
+    arm.position.set(Math.cos(angle) * 0.7, 0.25, Math.sin(angle) * 0.7);
+    group.add(arm);
+
+    // Rotor disc
+    const rotorGeo = new THREE.CircleGeometry(0.3, 16);
+    const rotorMat = new THREE.MeshBasicMaterial({ color: 0x00d2b4, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
+    const rotor = new THREE.Mesh(rotorGeo, rotorMat);
+    rotor.rotation.x = -Math.PI / 2;
+    rotor.position.set(Math.cos(angle) * 1.1, 0.35, Math.sin(angle) * 1.1);
+    group.add(rotor);
+  }
+
+  // LED indicator
+  const ledGeo = new THREE.SphereGeometry(0.08, 8, 8);
+  const ledMat = new THREE.MeshBasicMaterial({ color: 0x00ff88 });
+  const led = new THREE.Mesh(ledGeo, ledMat);
+  led.position.set(0, 0.45, 0.5);
+  group.add(led);
+
+  group.position.set(State.telemetry.x, State.telemetry.z || 0, State.telemetry.y);
+  scene3d.add(group);
+  robotMesh = group;
+}
+
+function createTwinMesh() {
+  const twinGeo = new THREE.BoxGeometry(1.2, 0.4, 1.2);
+  const twinMat = new THREE.MeshStandardMaterial({
+    color: 0x00b4d8, transparent: true, opacity: 0.2,
+    wireframe: true
+  });
+  twinMesh = new THREE.Mesh(twinGeo, twinMat);
+  twinMesh.visible = false;
+  scene3d.add(twinMesh);
+}
+
+function updateCameraPosition() {
+  if (!camera3d) return;
+  camera3d.position.set(
+    Math.cos(camAngle) * camDist,
+    camHeight,
+    Math.sin(camAngle) * camDist
+  );
+  const target = robotMesh ? robotMesh.position : new THREE.Vector3(0, 0, 0);
+  camera3d.lookAt(target);
+}
+
+// Touch orbit controls
+function setupThreeTouchControls(canvas) {
+  let touchStartAngle = 0, touchStartDist = 0;
+  let pinchStartDist = 0, pinchStartZoom = 0;
+  let isSingleTouch = false, isPinching = false;
+
+  canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (e.touches.length === 1) {
+      isSingleTouch = true;
+      isPinching = false;
+      touchStartAngle = e.touches[0].clientX;
+      touchStartDist = camAngle;
+    } else if (e.touches.length === 2) {
+      isSingleTouch = false;
+      isPinching = true;
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      pinchStartDist = Math.sqrt(dx * dx + dy * dy);
+      pinchStartZoom = camDist;
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (isSingleTouch && e.touches.length === 1) {
+      const dx = e.touches[0].clientX - touchStartAngle;
+      camAngle = touchStartDist + dx * 0.01;
+      updateCameraPosition();
+    } else if (isPinching && e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const scale = pinchStartDist / dist;
+      camDist = Math.max(5, Math.min(40, pinchStartZoom * scale));
+      updateCameraPosition();
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', () => {
+    isSingleTouch = false;
+    isPinching = false;
+  });
+}
+
+function resumeThreeJS() {
+  if (!threeInited || animFrameId) return;
+  function animate() {
+    animFrameId = requestAnimationFrame(animate);
+
+    // Update robot position from telemetry
+    if (robotMesh) {
+      robotMesh.position.set(State.telemetry.x, State.telemetry.z || 0, State.telemetry.y);
+      robotMesh.rotation.y = (State.telemetry.heading || 0) * Math.PI / 180;
+
+      // Gentle bob animation
+      robotMesh.position.y += Math.sin(Date.now() * 0.002) * 0.05;
+    }
+
+    renderer3d.render(scene3d, camera3d);
+  }
+  animate();
+}
+
+function pauseThreeJS() {
+  if (animFrameId) {
+    cancelAnimationFrame(animFrameId);
+    animFrameId = null;
+  }
+}
+
+// Reset camera button
+document.getElementById('btn-reset-cam').addEventListener('click', () => {
+  camAngle = Math.PI / 4;
+  camDist = 18;
+  camHeight = 14;
+  updateCameraPosition();
+  haptic(10);
+});
+
+// View mode toggle
+document.getElementById('btn-view-3d').addEventListener('click', () => {
+  document.getElementById('btn-view-3d').style.cssText = 'background:var(--teal-dim);color:var(--teal);border-color:var(--teal)';
+  document.getElementById('btn-view-cam').style.cssText = '';
+  document.getElementById('canvas3d-mobile').style.display = 'block';
+  haptic(10);
+});
+
+document.getElementById('btn-view-cam').addEventListener('click', () => {
+  document.getElementById('btn-view-cam').style.cssText = 'background:var(--teal-dim);color:var(--teal);border-color:var(--teal)';
+  document.getElementById('btn-view-3d').style.cssText = '';
+  // Camera feed placeholder
+  showToast('Camera feed requires a connected device', 'info');
+  haptic(10);
+});
+
+/* ═══════════════════════════════════════════════════════════
+   MISSIONS (TAB 4)
+   ═══════════════════════════════════════════════════════════ */
+
+async function loadMissions() {
+  const deviceId = State.activeDevice?.device_id || State.activeDevice?.id;
+  if (!deviceId) return;
+
+  try {
+    const data = await api(`/api/bt/trees/${deviceId}`);
+    State.missions = Array.isArray(data) ? data : (data.trees || []);
+  } catch (_) {
+    // Also try templates
+    try {
+      const templates = await api('/api/bt/templates');
+      State.missions = Array.isArray(templates) ? templates : (templates.templates || []);
+    } catch (__) {
+      State.missions = [];
+    }
+  }
+  renderMissions();
+}
+
+function renderMissions() {
+  const list = document.getElementById('mission-list');
+
+  if (!State.missions.length) {
+    list.innerHTML = `<div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      <p>No saved missions yet.<br>Use quick-launch above or create missions on desktop.</p>
+    </div>`;
+    return;
+  }
+
+  const iconClasses = {
+    patrol: 'patrol', search: 'search', sentry: 'sentry',
+    pick_place: 'pickplace', default: 'custom'
+  };
+
+  list.innerHTML = State.missions.map((m, i) => {
+    const name = m.name || m.tree_name || `Mission ${i + 1}`;
+    const status = m.status || 'idle';
+    const iconCls = iconClasses[m.template_type] || iconClasses.default;
+    const progress = m.progress || 0;
+
+    return `<div class="card mission-card" data-mission-idx="${i}">
+      <div class="mission-icon ${iconCls}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </div>
+      <div class="mission-info">
+        <div class="mission-name">${esc(name)}</div>
+        <div class="mission-desc">${esc(m.description || m.template_type || 'Custom mission')}</div>
+      </div>
+      <div class="mission-actions">
+        ${status === 'running'
+          ? `<button class="btn btn-sm btn-danger" onclick="stopMission('${m.tree_id || m.id || i}')">Stop</button>`
+          : `<button class="btn btn-sm btn-primary" onclick="runMission('${m.tree_id || m.id || i}')">Run</button>`
+        }
+      </div>
+    </div>
+    ${status === 'running' ? `<div class="mission-progress"><div class="bar" style="width:${progress}%"></div></div>` : ''}`;
+  }).join('');
+}
+
+async function runMission(id) {
+  const deviceId = State.activeDevice?.device_id || State.activeDevice?.id;
+  if (!deviceId) { showToast('Select a device', 'warning'); return; }
+
+  haptic(30);
+  showToast('Starting mission...', 'info');
+
+  try {
+    await api('/api/bt/execute', 'POST', { tree_id: id, device_id: deviceId });
+    showToast('Mission started', 'success');
+    // Poll for updates
+    pollMissionStatus(id, deviceId);
+  } catch (err) {
+    showToast('Failed to start mission', 'error');
+  }
+}
+
+async function stopMission(id) {
+  const deviceId = State.activeDevice?.device_id || State.activeDevice?.id;
+  haptic(50);
+  try {
+    await api('/api/bt/stop', 'POST', { tree_id: id, device_id: deviceId });
+    showToast('Mission stopped', 'warning');
+    loadMissions();
+  } catch (err) {
+    showToast('Failed to stop mission', 'error');
+  }
+}
+
+async function pollMissionStatus(treeId, deviceId) {
+  try {
+    const state = await api(`/api/bt/execution/${deviceId}`);
+    if (state && state.status === 'running') {
+      setTimeout(() => pollMissionStatus(treeId, deviceId), 500);
+    } else {
+      loadMissions();
+      if (state?.status === 'completed') showToast('Mission completed!', 'success');
+      if (state?.status === 'failed') showToast('Mission failed', 'error');
+    }
+  } catch (_) {}
+}
+
+// Quick-launch missions
+document.querySelectorAll('.quick-mission-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const mission = btn.dataset.mission;
+    const deviceId = State.activeDevice?.device_id || State.activeDevice?.id;
+    if (!deviceId) { showToast('Select a device first', 'warning'); return; }
+
+    haptic(20);
+    showToast(`Launching ${mission}...`, 'info');
+
+    // Use NLP to trigger the mission
+    executeNLPCommand(mission.replace('_', ' '));
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   WEBSOCKET REAL-TIME COMMUNICATION
+   ═══════════════════════════════════════════════════════════ */
+
+function connectWebSocket() {
+  if (State.ws && State.ws.readyState <= WebSocket.OPEN) return;
+
+  try {
+    State.ws = new WebSocket(WS_BASE());
+
+    State.ws.onopen = () => {
+      State.wsConnected = true;
+      State.wsReconnectDelay = 1000;
+      updateConnectionStatus(true);
+      console.log('[WS] connected');
+
+      // Subscribe to active device telemetry
+      if (State.activeDevice) {
+        State.ws.send(JSON.stringify({
+          type: 'subscribe',
+          device_id: State.activeDevice.device_id || State.activeDevice.id,
+        }));
+      }
+    };
+
+    State.ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        handleWSMessage(msg);
+      } catch (_) {}
+    };
+
+    State.ws.onclose = () => {
+      State.wsConnected = false;
+      updateConnectionStatus(false);
+      scheduleWSReconnect();
+    };
+
+    State.ws.onerror = () => {
+      State.ws.close();
+    };
+  } catch (err) {
+    console.warn('[WS] connection failed:', err);
+    scheduleWSReconnect();
+  }
+}
+
+function scheduleWSReconnect() {
+  if (State.wsReconnectTimer) return;
+  State.wsReconnectTimer = setTimeout(() => {
+    State.wsReconnectTimer = null;
+    State.wsReconnectDelay = Math.min(State.wsReconnectDelay * 1.5, 30000);
+    connectWebSocket();
+  }, State.wsReconnectDelay);
+}
+
+function handleWSMessage(msg) {
+  switch (msg.type) {
+    case 'telemetry':
+      Object.assign(State.telemetry, msg.data || msg);
+      updateTelemetryUI();
+      break;
+
+    case 'device_update':
+      // Refresh device list
+      loadDevices();
+      break;
+
+    case 'mission_status':
+      if (msg.status === 'completed') showToast(`Mission ${msg.name || ''} completed`, 'success');
+      if (msg.status === 'failed') showToast(`Mission ${msg.name || ''} failed`, 'error');
+      loadMissions();
+      break;
+
+    case 'notification':
+      showNotification(msg.title, msg.body, msg.tag);
+      break;
+
+    case 'battery_warning':
+      showToast(`Low battery: ${msg.level}%`, 'warning');
+      haptic(100);
+      break;
+
+    case 'twin_divergence':
+      showToast('Twin divergence detected!', 'warning');
+      break;
+
+    case 'collab_peer':
+      showToast(`${msg.peer} ${msg.action === 'joined' ? 'joined' : 'left'}`, 'info');
+      break;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TELEMETRY UI
+   ═══════════════════════════════════════════════════════════ */
+
+function updateTelemetryUI() {
+  const t = State.telemetry;
+
+  // Header battery
+  document.getElementById('hdr-battery-pct').textContent = t.battery != null ? `${t.battery}%` : '--';
+
+  // Control tab telemetry
+  document.getElementById('telem-batt').textContent = t.battery != null ? `${t.battery}%` : '--%';
+  document.getElementById('telem-alt').textContent = t.altitude != null ? `${t.altitude.toFixed(1)}m` : '--m';
+  document.getElementById('telem-speed').textContent = t.speed != null ? `${t.speed.toFixed(1)}m/s` : '--m/s';
+  document.getElementById('telem-signal').textContent = t.signal || '--';
+
+  // 3D tab position
+  document.getElementById('pos-x').textContent = (t.x || 0).toFixed(1);
+  document.getElementById('pos-y').textContent = (t.y || 0).toFixed(1);
+  document.getElementById('pos-z').textContent = (t.z || 0).toFixed(1);
+  document.getElementById('pos-hdg').textContent = `${(t.heading || 0).toFixed(0)}°`;
+
+  // Battery color
+  const battEl = document.getElementById('hdr-battery');
+  if (t.battery != null) {
+    battEl.style.color = t.battery < 20 ? 'var(--danger)' : t.battery < 50 ? 'var(--warning)' : 'var(--success)';
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CONNECTION STATUS
+   ═══════════════════════════════════════════════════════════ */
+
+function updateConnectionStatus(connected) {
+  State.connected = connected;
+  const dot = document.getElementById('conn-indicator');
+  dot.className = 'conn-dot';
+  if (connected) {
+    dot.classList.remove('disconnected', 'reconnecting');
+  } else if (State.wsReconnectTimer) {
+    dot.classList.add('reconnecting');
+  } else {
+    dot.classList.add('disconnected');
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   OFFLINE / ONLINE HANDLING
+   ═══════════════════════════════════════════════════════════ */
+
+const offlineBanner = document.getElementById('offline-banner');
+
+window.addEventListener('online', () => {
+  State.online = true;
+  offlineBanner.classList.remove('show');
+  showToast('Back online', 'success');
+
+  // Flush command queue
+  if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'FLUSH_QUEUE' });
+  }
+
+  // Reconnect
+  connectWebSocket();
+  loadDevices();
+});
+
+window.addEventListener('offline', () => {
+  State.online = false;
+  offlineBanner.classList.add('show');
+  showToast('You are offline — commands will be queued', 'warning');
+});
+
+/* ═══════════════════════════════════════════════════════════
+   NOTIFICATIONS
+   ═══════════════════════════════════════════════════════════ */
+
+async function requestNotificationPermission() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
+}
+
+function showNotification(title, body, tag = 'omnix') {
+  // In-app toast always
+  showToast(body || title, 'info');
+
+  // System notification if permission granted and app is not focused
+  if (Notification.permission === 'granted' && document.hidden) {
+    try {
+      new Notification(title, {
+        body,
+        icon: '/mobile/icon-192.png',
+        tag,
+        vibrate: [100, 50, 100],
+      });
+    } catch (_) {
+      // Some browsers don't support Notification constructor in SW scope
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SETTINGS (TAB 5)
+   ═══════════════════════════════════════════════════════════ */
+
+// Theme toggle
+const themeToggle = document.getElementById('toggle-theme');
+themeToggle.addEventListener('click', () => {
+  const isDark = themeToggle.classList.toggle('on');
+  State.theme = isDark ? 'dark' : 'light';
+  document.body.classList.toggle('light', !isDark);
+  document.querySelector('meta[name="theme-color"]').content = isDark ? '#0a1628' : '#f0f4f8';
+  haptic(15);
+  try { localStorage.setItem('omnix-theme', State.theme); } catch(_) {}
+});
+
+// Haptics toggle
+const hapticsToggle = document.getElementById('toggle-haptics');
+hapticsToggle.addEventListener('click', () => {
+  State.haptics = hapticsToggle.classList.toggle('on');
+  try { localStorage.setItem('omnix-haptics', State.haptics); } catch(_) {}
+});
+
+// Sensitivity
+document.getElementById('setting-sensitivity').addEventListener('click', () => {
+  const levels = [
+    { val: 0.5, label: 'Low' },
+    { val: 1.0, label: 'Medium' },
+    { val: 1.5, label: 'High' },
+  ];
+  const currentIdx = levels.findIndex(l => l.val === State.sensitivity);
+  const nextIdx = (currentIdx + 1) % levels.length;
+  State.sensitivity = levels[nextIdx].val;
+  document.getElementById('sensitivity-val').textContent = levels[nextIdx].label;
+  haptic(15);
+  try { localStorage.setItem('omnix-sensitivity', State.sensitivity); } catch(_) {}
+});
+
+// Server settings
+document.getElementById('setting-server').addEventListener('click', () => {
+  document.getElementById('server-url-input').value = State.serverUrl;
+  document.getElementById('auth-token-input').value = State.authToken;
+  openModal('modal-server');
+});
+
+function saveServerSettings() {
+  State.serverUrl = document.getElementById('server-url-input').value.trim();
+  State.authToken = document.getElementById('auth-token-input').value.trim();
+  document.getElementById('server-url-display').textContent = State.serverUrl || 'Auto';
+  try {
+    localStorage.setItem('omnix-server-url', State.serverUrl);
+    localStorage.setItem('omnix-auth-token', State.authToken);
+  } catch(_) {}
+  closeModals();
+  showToast('Reconnecting...', 'info');
+  loadDevices();
+  if (State.ws) State.ws.close();
+  connectWebSocket();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MODALS
+   ═══════════════════════════════════════════════════════════ */
+
+function openModal(id) {
+  document.getElementById(id).classList.add('show');
+}
+
+function closeModals() {
+  document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('show'));
+}
+
+// Close on backdrop click
+document.querySelectorAll('.modal-overlay').forEach(modal => {
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModals();
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════
+   TELEMETRY POLLING (HTTP fallback)
+   ═══════════════════════════════════════════════════════════ */
+
+let telemPollTimer = null;
+
+function startTelemetryPolling() {
+  if (telemPollTimer) return;
+  telemPollTimer = setInterval(async () => {
+    if (!State.activeDevice || State.wsConnected) return;
+    try {
+      const data = await api('/api/mobile/dashboard');
+      if (data) {
+        if (data.telemetry) Object.assign(State.telemetry, data.telemetry);
+        if (data.devices) { State.devices = data.devices; renderDevices(); }
+        updateTelemetryUI();
+        updateConnectionStatus(true);
+      }
+    } catch (_) {
+      updateConnectionStatus(false);
+    }
+  }, 2000);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   RESIZE HANDLING
+   ═══════════════════════════════════════════════════════════ */
+
+window.addEventListener('resize', () => {
+  if (threeInited && renderer3d) {
+    const canvas = document.getElementById('canvas3d-mobile');
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const w = rect.width;
+    const h = rect.height - 80;
+    renderer3d.setSize(w, Math.max(h, 100));
+    camera3d.aspect = w / Math.max(h, 1);
+    camera3d.updateProjectionMatrix();
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════
+   INITIALIZATION
+   ═══════════════════════════════════════════════════════════ */
+
+(function init() {
+  // Restore saved preferences
+  try {
+    const theme = localStorage.getItem('omnix-theme');
+    if (theme === 'light') {
+      State.theme = 'light';
+      document.body.classList.add('light');
+      themeToggle.classList.remove('on');
+    }
+    const haptics = localStorage.getItem('omnix-haptics');
+    if (haptics === 'false') {
+      State.haptics = false;
+      hapticsToggle.classList.remove('on');
+    }
+    const sens = parseFloat(localStorage.getItem('omnix-sensitivity'));
+    if (!isNaN(sens)) {
+      State.sensitivity = sens;
+      document.getElementById('sensitivity-val').textContent =
+        sens <= 0.5 ? 'Low' : sens >= 1.5 ? 'High' : 'Medium';
+    }
+    State.serverUrl = localStorage.getItem('omnix-server-url') || '';
+    State.authToken = localStorage.getItem('omnix-auth-token') || '';
+    if (State.serverUrl) document.getElementById('server-url-display').textContent = State.serverUrl;
+  } catch(_) {}
+
+  // Initial data load
+  loadDevices();
+  startTelemetryPolling();
+
+  // Try WebSocket
+  connectWebSocket();
+
+  // Voice init (lazy)
+  initVoiceControl();
+
+  // Request notification permission after user interaction
+  document.addEventListener('click', () => requestNotificationPermission(), { once: true });
+
+  // Check offline state
+  if (!navigator.onLine) {
+    offlineBanner.classList.add('show');
+  }
+})();
+</script>
+</body>
+</html>
