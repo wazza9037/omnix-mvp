@@ -205,6 +205,11 @@ from omnix.collab import CollabWSHandler
 # Import Video module
 from omnix.video import VideoStreamManager, VideoSource, FrameProcessor
 
+# Import Sensor Dashboard
+from omnix.sensors import SensorRegistry, AlertManager, SensorSimulator
+from omnix.sensors.alerts import AlertRule
+from omnix.sensors.simulator import auto_register_sensors
+
 # Marketplace store — session-scoped, seeded on first access
 marketplace_store = MarketplaceStore()
 marketplace_installer = Installer(marketplace_store)
@@ -215,6 +220,11 @@ collab_handler = CollabWSHandler()
 # Video stream manager — session-scoped
 video_manager = VideoStreamManager()
 _frame_processor = FrameProcessor()
+
+# Sensor Dashboard — registry, alerts, simulator
+sensor_registry = SensorRegistry()
+alert_manager = AlertManager()
+sensor_simulator = SensorSimulator(sensor_registry)
 
 # WebSocket server (initialized in main() if enabled)
 ws_server = None
@@ -255,6 +265,11 @@ movement_executor = None  # Set in main()
 # Initialize Connector Manager (after devices dict exists)
 connector_manager: ConnectorManager = None  # Set in main()
 
+# Initialize Plugin System
+from omnix.plugins import PluginLoader, PluginRegistry, PluginValidator
+plugin_registry: PluginRegistry = None  # Set in main()
+plugin_loader: PluginLoader = None       # Set in main()
+
 # ── Pi Agent Registry ──
 # Stores connected Pi agents: {agent_id: {device_id, name, device_type, ...}}
 pi_agents = {}
@@ -272,6 +287,11 @@ sse_clients = []
 
 def add_device(device):
     devices[device.id] = device
+    # Auto-register sensor channels for the new device
+    try:
+        auto_register_sensors(sensor_registry, device.id, device.device_type)
+    except Exception:
+        pass  # Sensor registration is best-effort
     log.info("device registered: %s %s (id=%s)", device.device_type, device.name, device.id,
              extra={"device_type": device.device_type, "device_id": device.id})
 
@@ -553,6 +573,14 @@ class OmnixHandler(SimpleHTTPRequestHandler):
             dt = qs.get("device_type", [""])[0]
             suggestions = connector_manager.suggest_for_vpe(cat, dt) if connector_manager else []
             self._json_response(suggestions)
+
+        # ── Plugin Endpoints (GET) ──
+
+        elif parsed.path == "/api/plugins":
+            if plugin_registry:
+                self._json_response(plugin_registry.list_plugins())
+            else:
+                self._json_response([])
 
         # ── ESP32 Agent Endpoints (GET) ──
 
@@ -934,6 +962,91 @@ class OmnixHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(content)
             else:
                 self._json_response({"error": "Not found"}, 404)
+
+        # ── Sensor Dashboard Endpoints (GET) ──
+
+        elif parsed.path.startswith("/api/sensors/") and "/alerts" not in parsed.path and "/history" not in parsed.path:
+            # GET /api/sensors/<device_id> — all sensors with current values
+            parts = parsed.path.split("/")
+            if len(parts) >= 4:
+                device_id = parts[3]
+                # Tick the simulator to get fresh readings
+                sensor_simulator.tick(device_id)
+                # Check alerts
+                for s in sensor_registry.get_device_sensors(device_id):
+                    alert_manager.check_sensor(
+                        device_id, s["id"], s["name"], s["current_value"])
+                sensors = sensor_registry.get_device_sensors(device_id)
+                # Update sensor statuses based on active alerts
+                active = alert_manager.get_active_alerts(device_id)
+                alert_sensor_ids = {a["sensor_id"] for a in active}
+                for s in sensors:
+                    if s["id"] in alert_sensor_ids:
+                        s["status"] = "alert"
+                        sensor_registry.update_status(device_id, s["id"], "alert")
+                    else:
+                        sensor_registry.update_status(device_id, s["id"], "normal")
+                self._json_response({
+                    "device_id": device_id,
+                    "sensors": sensors,
+                    "active_alerts": active,
+                    "timestamp": time.time(),
+                })
+            else:
+                self._json_response({"error": "Device ID required"}, 400)
+
+        elif parsed.path.endswith("/history"):
+            # GET /api/sensors/<device_id>/<sensor_id>/history
+            parts = parsed.path.split("/")
+            if len(parts) >= 5:
+                device_id = parts[3]
+                sensor_id = parts[4]
+                qs = parse_qs(parsed.query)
+                last_n = int(qs.get("last_n", [500])[0])
+                history = sensor_registry.get_sensor_history(device_id, sensor_id, last_n)
+                ch = sensor_registry.get_sensor(device_id, sensor_id)
+                self._json_response({
+                    "device_id": device_id,
+                    "sensor_id": sensor_id,
+                    "sensor_name": ch.name if ch else sensor_id,
+                    "unit": ch.unit if ch else "",
+                    "history": history,
+                    "count": len(history),
+                })
+            else:
+                self._json_response({"error": "Bad path"}, 400)
+
+        elif parsed.path.endswith("/alerts") and parsed.path.startswith("/api/sensors/"):
+            # GET /api/sensors/<device_id>/alerts — list alerts with status
+            parts = parsed.path.split("/")
+            device_id = parts[3]
+            qs = parse_qs(parsed.query)
+            state_filter = qs.get("state", [None])[0]
+            alerts = alert_manager.get_alerts(device_id, state=state_filter)
+            rules = alert_manager.get_rules(device_id)
+            self._json_response({
+                "device_id": device_id,
+                "alerts": alerts,
+                "rules": rules,
+            })
+
+        elif parsed.path.startswith("/api/sensors-export/"):
+            # GET /api/sensors-export/<device_id> — CSV export
+            parts = parsed.path.split("/")
+            device_id = parts[3] if len(parts) >= 4 else ""
+            qs = parse_qs(parsed.query)
+            sensor_id = qs.get("sensor_id", [None])[0]
+            csv_data = sensor_registry.export_csv(device_id, sensor_id)
+            body = csv_data.encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/csv")
+            self.send_header("Content-Disposition",
+                             f"attachment; filename=sensors_{device_id[:8]}.csv")
+            self.send_header("Content-Length", len(body))
+            cors_middleware.apply_headers(self)
+            self.end_headers()
+            self.wfile.write(body)
+            return
 
         # ── Video endpoints ──
 
@@ -1372,6 +1485,31 @@ class OmnixHandler(SimpleHTTPRequestHandler):
             else:
                 self._json_response({"error": "Manager not ready"}, 500)
 
+        # ── Plugin Endpoints (POST) ──
+
+        elif parsed.path == "/api/plugins/reload":
+            if plugin_registry and plugin_loader:
+                results = plugin_registry.reload_all(plugin_loader)
+                self._json_response({"success": True, "results": results})
+            else:
+                self._json_response({"error": "Plugin system not ready"}, 500)
+
+        elif parsed.path.startswith("/api/plugins/enable/"):
+            name = parsed.path.split("/")[-1]
+            if plugin_registry:
+                ok = plugin_registry.enable_plugin(name)
+                self._json_response({"success": ok, "plugin": name})
+            else:
+                self._json_response({"error": "Plugin system not ready"}, 500)
+
+        elif parsed.path.startswith("/api/plugins/disable/"):
+            name = parsed.path.split("/")[-1]
+            if plugin_registry:
+                ok = plugin_registry.disable_plugin(name)
+                self._json_response({"success": ok, "plugin": name})
+            else:
+                self._json_response({"error": "Plugin system not ready"}, 500)
+
         # ── ESP32 Agent Endpoints (POST) ──
 
         elif parsed.path == "/api/esp32/register":
@@ -1548,6 +1686,9 @@ class OmnixHandler(SimpleHTTPRequestHandler):
             name = custom_name or tpl.display_name
             dev = CustomRobotDevice(name=name, build=build)
             add_device(dev)
+            # Re-register sensors with template-specific set
+            sensor_registry.unregister_device(dev.id)
+            auto_register_sensors(sensor_registry, dev.id, dev.device_type, template_id=template_id)
             ws = workspace_store.ensure(dev)
             workspace_store.set_custom_build(
                 dev.id, build.to_dict(), template_id=template_id)
@@ -2063,6 +2204,42 @@ class OmnixHandler(SimpleHTTPRequestHandler):
                 except Exception as e:
                     self._json_response({"error": str(e)}, 500)
 
+        # ── Sensor Dashboard POST routes ─────────────────────
+
+        elif parsed.path.startswith("/api/sensors/") and parsed.path.endswith("/alerts"):
+            # POST /api/sensors/<device_id>/alerts — create/update alert rules
+            parts = parsed.path.split("/")
+            device_id = parts[3]
+            rule_data = dict(data)
+            rule_data["device_id"] = device_id
+            if "id" not in rule_data:
+                rule_data["id"] = f"rule-{uuid.uuid4().hex[:8]}"
+            rule = AlertRule.from_dict(rule_data)
+            alert_manager.add_rule(rule)
+            log.info("sensor alert rule created: %s on %s/%s",
+                     rule.alert_type, device_id, rule.sensor_id)
+            self._json_response({"ok": True, "rule": rule.to_dict()})
+
+        elif parsed.path.startswith("/api/sensors/acknowledge/"):
+            # POST /api/sensors/acknowledge/<alert_id>
+            alert_id = parsed.path.split("/")[-1]
+            ok = alert_manager.acknowledge(alert_id)
+            if ok:
+                self._json_response({"ok": True, "alert_id": alert_id})
+            else:
+                self._json_response({"error": "Alert not found or already acknowledged"}, 404)
+
+        elif parsed.path.startswith("/api/sensors/delete-rule/"):
+            # POST /api/sensors/delete-rule/<device_id>/<rule_id>
+            parts = parsed.path.split("/")
+            if len(parts) >= 5:
+                device_id = parts[4]
+                rule_id = parts[5] if len(parts) >= 6 else ""
+                ok = alert_manager.remove_rule(device_id, rule_id)
+                self._json_response({"ok": ok})
+            else:
+                self._json_response({"error": "Bad path"}, 400)
+
         # ── Video POST routes ──────────────────────────────
 
         elif parsed.path.startswith("/api/video/record/"):
@@ -2196,7 +2373,7 @@ class OmnixHandler(SimpleHTTPRequestHandler):
 
 
 def main():
-    global movement_executor, connector_manager, ws_server
+    global movement_executor, connector_manager, ws_server, plugin_registry, plugin_loader
 
     # ── Initialize database ──
     _init_database()
@@ -2218,6 +2395,15 @@ def main():
         video_manager.start(did)
     log.info("video feeds initialized for %d devices", len(devices))
 
+    # Register sensor channels for all devices
+    for did, dev in devices.items():
+        auto_register_sensors(sensor_registry, did, dev.device_type)
+        # Seed initial readings
+        for _ in range(30):
+            sensor_simulator.tick(did)
+    log.info("sensor dashboard initialized: %d devices with sensors",
+             len(sensor_registry.get_all_device_ids()))
+
     # Initialize movement executor with device registry
     movement_executor = MovementExecutor(devices)
 
@@ -2229,6 +2415,39 @@ def main():
         except Exception as e:
             log.exception("failed to register connector %s", cls.__name__,
                           extra={"connector_class": cls.__name__})
+
+    # ── Load plugins ──
+    plugins_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "plugins")
+    plugin_loader = PluginLoader(plugins_dir)
+    plugin_registry = PluginRegistry()
+
+    # Wire plugin registry into connector manager
+    plugin_registry.set_connector_hooks(
+        register_fn=lambda cls: connector_manager.register(cls),
+        unregister_fn=lambda cid: connector_manager._classes.pop(cid, None),
+    )
+    plugin_registry.set_sensor_hooks(
+        register_fn=lambda spec: sensor_registry.register(
+            spec["device_id"], spec["sensor_id"], spec["name"],
+            spec.get("sensor_type", "custom"),
+            spec.get("range_min", 0), spec.get("range_max", 100),
+            spec.get("unit", ""),
+        ),
+        unregister_fn=lambda did, sid: sensor_registry.unregister(did, sid)
+        if hasattr(sensor_registry, "unregister") else None,
+    )
+
+    # Discover and load plugins
+    discovered = plugin_loader.discover()
+    loaded_count = 0
+    for plugin in discovered:
+        try:
+            if plugin_registry.load_plugin(plugin):
+                loaded_count += 1
+        except Exception as e:
+            log.exception("failed to load plugin %s",
+                          plugin.meta.name if plugin.meta else "unknown")
+    log.info("plugins loaded: %d/%d from %s", loaded_count, len(discovered), plugins_dir)
 
     # ── Start WebSocket server ──
     ws_started = False
@@ -2277,6 +2496,15 @@ def main():
     for cls in ALL_CONNECTORS:
         meta = cls.meta
         print(f"    [T{meta.tier}] {meta.display_name:32s} ({meta.connector_id})")
+    print()
+    print("  Loaded plugins:")
+    if plugin_registry and plugin_registry.get_plugin_names():
+        for pname in plugin_registry.get_plugin_names():
+            p = plugin_registry.get_plugin(pname)
+            if p and p.meta:
+                print(f"    [{p.meta.icon}] {p.meta.name:32s} v{p.meta.version}")
+    else:
+        print("    (none)")
     print()
     print("  Pi agents can connect via:")
     print(f"    python pi_agent.py --server http://<this-ip>:{port}")

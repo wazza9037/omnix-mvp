@@ -1761,6 +1761,154 @@
     cursor: pointer; font-size: 12px;
   }
   .cam-toggle-btn:hover { background: rgba(0,0,0,0.8); }
+
+  /* ── Sensor Dashboard ────────────────────────────────── */
+  .sensor-dashboard { padding: 12px; }
+  .sensor-toolbar {
+    display: flex; gap: 8px; align-items: center; margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .sensor-toolbar button, .sensor-toolbar select {
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    color: var(--text); padding: 6px 12px; border-radius: 6px;
+    cursor: pointer; font-size: 12px;
+  }
+  .sensor-toolbar button:hover { border-color: var(--accent); }
+  .sensor-toolbar button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .sensor-alert-banner {
+    background: linear-gradient(135deg, #dc354560, #ff6b3560);
+    border: 1px solid #dc3545; border-radius: 8px; padding: 10px 16px;
+    margin-bottom: 12px; display: flex; align-items: center; gap: 10px;
+    animation: alertPulse 2s ease-in-out infinite;
+  }
+  .sensor-alert-banner.warning {
+    background: linear-gradient(135deg, #ffc10760, #ff8f0060);
+    border-color: #ffc107;
+  }
+  @keyframes alertPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.85; }
+  }
+  .sensor-alert-banner .alert-msg { flex: 1; font-size: 13px; }
+  .sensor-alert-banner .alert-sensor { font-weight: 600; color: #ff6b6b; }
+  .sensor-alert-banner button {
+    background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+    color: #fff; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;
+  }
+
+  .sensor-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px; margin-bottom: 16px;
+  }
+  .sensor-grid.list-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sensor-card {
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: 10px; padding: 14px; cursor: pointer;
+    transition: all 0.2s ease; position: relative;
+  }
+  .sensor-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .sensor-card.alert { border-color: #dc3545; box-shadow: 0 0 12px rgba(220,53,69,0.3); }
+  .sensor-card.warning { border-color: #ffc107; }
+
+  .sensor-card-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+  }
+  .sensor-card-name { font-size: 12px; color: var(--text-dim); font-weight: 500; }
+  .sensor-card-type {
+    font-size: 10px; background: rgba(0,180,216,0.15); color: var(--accent);
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .sensor-card-value {
+    font-size: 28px; font-weight: 700; color: var(--text);
+    font-variant-numeric: tabular-nums; line-height: 1.1;
+  }
+  .sensor-card-unit { font-size: 14px; color: var(--text-dim); font-weight: 400; margin-left: 4px; }
+  .sensor-card-range {
+    font-size: 10px; color: var(--text-dim); margin-top: 4px;
+    display: flex; justify-content: space-between;
+  }
+  .sensor-sparkline {
+    width: 100%; height: 32px; margin-top: 8px;
+  }
+  .sensor-sparkline polyline {
+    fill: none; stroke: var(--accent); stroke-width: 1.5;
+    stroke-linecap: round; stroke-linejoin: round;
+  }
+  .sensor-sparkline .spark-area {
+    fill: url(#sparkGrad); opacity: 0.3;
+  }
+  .sensor-status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #28a745; display: inline-block; margin-right: 6px;
+  }
+  .sensor-status-dot.alert { background: #dc3545; animation: alertPulse 1s infinite; }
+  .sensor-status-dot.warning { background: #ffc107; }
+
+  .sensor-bell-btn {
+    position: absolute; top: 10px; right: 10px;
+    background: none; border: none; cursor: pointer;
+    font-size: 14px; opacity: 0.5; transition: opacity 0.2s;
+  }
+  .sensor-bell-btn:hover { opacity: 1; }
+  .sensor-bell-btn.has-rule { opacity: 1; color: #ffc107; }
+
+  /* Expanded chart */
+  .sensor-chart-expanded {
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    border-radius: 10px; padding: 16px; margin-bottom: 12px;
+  }
+  .sensor-chart-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px;
+  }
+  .sensor-chart-header h3 { margin: 0; font-size: 14px; font-weight: 600; }
+  .sensor-chart-canvas { width: 100%; height: 200px; }
+  .sensor-chart-controls {
+    display: flex; gap: 6px; margin-top: 8px;
+  }
+  .sensor-chart-controls button {
+    background: var(--card-bg); border: 1px solid var(--card-border);
+    color: var(--text-dim); padding: 3px 10px; border-radius: 4px;
+    cursor: pointer; font-size: 11px;
+  }
+  .sensor-chart-controls button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* Alert config modal */
+  .sensor-alert-modal {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 1000;
+  }
+  .sensor-alert-modal-content {
+    background: var(--panel-bg); border: 1px solid var(--card-border);
+    border-radius: 12px; padding: 24px; min-width: 360px; max-width: 420px;
+  }
+  .sensor-alert-modal-content h3 { margin: 0 0 16px; font-size: 16px; }
+  .sensor-alert-modal-content label {
+    display: block; font-size: 12px; color: var(--text-dim);
+    margin: 8px 0 4px;
+  }
+  .sensor-alert-modal-content input, .sensor-alert-modal-content select {
+    width: 100%; padding: 8px; background: var(--card-bg);
+    border: 1px solid var(--card-border); border-radius: 6px;
+    color: var(--text); font-size: 13px;
+  }
+  .sensor-alert-modal-content .modal-actions {
+    display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end;
+  }
+  .sensor-alert-modal-content .modal-actions button {
+    padding: 8px 16px; border-radius: 6px; border: 1px solid var(--card-border);
+    cursor: pointer; font-size: 13px;
+  }
+  .sensor-alert-modal-content .modal-actions .btn-primary {
+    background: var(--accent); color: #fff; border-color: var(--accent);
+  }
 </style>
 </head>
 <body>
@@ -2076,6 +2224,9 @@ let connectorInstances = [];    // running instances (polled)
 let connectorPickerCategory = null; // if set, picker filters to this category's suggestions
 let connectorPickerList = [];   // what the picker is currently displaying
 let connectorConfig = {};       // working form state during config step
+
+// Plugin system state
+let _plugins = [];              // loaded plugins from /api/plugins
 
 // Workspace / tab system state
 let workspaces = {};            // device_id → workspace (full)
@@ -2967,6 +3118,42 @@ async function fetchConnectorInstances() {
     }
     return true;
   } catch(e) { return false; }
+}
+
+async function fetchPlugins() {
+  try {
+    const r = await fetch('/api/plugins');
+    if (!r.ok) return false;
+    _plugins = await r.json();
+    return true;
+  } catch(e) { return false; }
+}
+
+async function reloadPlugins() {
+  try {
+    const r = await fetch('/api/plugins/reload', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    if (r.ok) {
+      await fetchPlugins();
+      await fetchConnectorClasses();
+      renderSidebar();
+      showToast('Plugins reloaded', 'success');
+    }
+  } catch(e) { showToast('Failed to reload plugins', 'error'); }
+}
+
+async function togglePlugin(name, enabled) {
+  try {
+    const endpoint = enabled ? 'enable' : 'disable';
+    const r = await fetch(`/api/plugins/${endpoint}/${name}`, { method: 'POST',
+      headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    if (r.ok) {
+      await fetchPlugins();
+      await fetchConnectorClasses();
+      renderSidebar();
+      showToast(`Plugin ${name} ${enabled ? 'enabled' : 'disabled'}`, 'success');
+    }
+  } catch(e) { showToast('Failed to toggle plugin', 'error'); }
 }
 
 async function fetchSuggestionsFor(category) {
@@ -5227,6 +5414,8 @@ function renderViewSwitcher() {
   // Mission (Behavior Tree) tab — always available
   views.push({ key: 'mission', icon: '🌳', label: 'Mission',
     badge: btCurrentExecution && btCurrentExecution.status === 'running' ? '●' : null });
+  // Sensors tab — always available for real-time sensor dashboard
+  views.push({ key: 'sensors', icon: '📊', label: 'Sensors' });
   // Twin tab always available — clicking it creates a virtual-hardware twin
   // on demand. The badge shows the live sync score when a twin is active.
   const twinBadge = twinState
@@ -5253,8 +5442,314 @@ function renderActiveView() {
   else if (activeView === 'simulate')   viewContent.innerHTML = renderSimulateHTML(ws);
   else if (activeView === 'iterations') viewContent.innerHTML = renderIterationsHTML(ws);
   else if (activeView === 'build')      viewContent.innerHTML = renderBuildHTML(ws);
+  else if (activeView === 'sensors')     { viewContent.innerHTML = renderSensorsHTML(ws); initSensorDashboard(ws); }
   else if (activeView === 'twin')       viewContent.innerHTML = renderTwinView(ws);
   else if (activeView === 'mission')    {} // Mission editor is handled by initMissionEditor()
+}
+
+// ── Sensor Dashboard view ──────────────────────────────
+
+let _sensorPollTimer = null;
+let _sensorData = {};       // cached sensor response
+let _sensorExpanded = {};   // sensor_id → true if chart expanded
+let _sensorLayout = 'grid'; // grid | list
+let _sensorChartOverlay = []; // sensor_ids overlaid on expanded chart
+
+function renderSensorsHTML(ws) {
+  return `
+    <div class="sensor-dashboard" id="sensor-dashboard">
+      <div id="sensor-alert-banners"></div>
+      <div class="sensor-toolbar">
+        <button class="${_sensorLayout==='grid'?'active':''}" onclick="setSensorLayout('grid')">Grid</button>
+        <button class="${_sensorLayout==='list'?'active':''}" onclick="setSensorLayout('list')">List</button>
+        <span style="flex:1"></span>
+        <button onclick="exportSensorCSV()">⬇ Export CSV</button>
+      </div>
+      <div id="sensor-expanded-charts"></div>
+      <div class="sensor-grid ${_sensorLayout==='list'?'list-layout':''}" id="sensor-grid"></div>
+    </div>`;
+}
+
+function initSensorDashboard(ws) {
+  if (_sensorPollTimer) clearInterval(_sensorPollTimer);
+  _sensorExpanded = {};
+  _sensorChartOverlay = [];
+  _fetchSensors();
+  _sensorPollTimer = setInterval(_fetchSensors, 800);
+}
+
+function _fetchSensors() {
+  if (!activeTabId || activeView !== 'sensors') {
+    if (_sensorPollTimer) { clearInterval(_sensorPollTimer); _sensorPollTimer = null; }
+    return;
+  }
+  const ws = workspaces[activeTabId];
+  if (!ws) return;
+  fetch(`/api/sensors/${ws.device_id}`)
+    .then(r => r.json())
+    .then(data => {
+      _sensorData = data;
+      _renderSensorGrid(data);
+      _renderAlertBanners(data.active_alerts || []);
+      _renderExpandedCharts();
+    })
+    .catch(() => {});
+}
+
+function _renderSensorGrid(data) {
+  const grid = document.getElementById('sensor-grid');
+  if (!grid) return;
+  const sensors = data.sensors || [];
+  grid.innerHTML = sensors.map(s => {
+    const statusCls = s.status === 'alert' ? 'alert' : s.status === 'warning' ? 'warning' : '';
+    const dotCls = statusCls;
+    const val = typeof s.current_value === 'number' ? s.current_value.toFixed(s.unit === '°' || s.unit === 'ticks' ? 0 : 1) : '--';
+    const sparkline = _renderSparklineSVG(s.sparkline || [], s.range_min, s.range_max);
+    const expanded = _sensorExpanded[s.id] ? 'border-color:var(--accent);' : '';
+    return `
+      <div class="sensor-card ${statusCls}" style="${expanded}"
+           onclick="toggleSensorExpand('${s.id}','${s.name}','${s.unit}')">
+        <button class="sensor-bell-btn" onclick="event.stopPropagation();openAlertConfig('${s.id}','${s.name}','${data.device_id}')" title="Set alert">🔔</button>
+        <div class="sensor-card-header">
+          <span class="sensor-card-name"><span class="sensor-status-dot ${dotCls}"></span>${s.name}</span>
+          <span class="sensor-card-type">${s.sensor_type}</span>
+        </div>
+        <div class="sensor-card-value">${val}<span class="sensor-card-unit">${s.unit}</span></div>
+        <div class="sensor-card-range"><span>Min: ${s.range_min}</span><span>Max: ${s.range_max}</span></div>
+        ${sparkline}
+      </div>`;
+  }).join('');
+}
+
+function _renderSparklineSVG(values, rmin, rmax) {
+  if (!values || values.length < 2) return '<div class="sensor-sparkline"></div>';
+  const w = 200, h = 32, pad = 2;
+  const range = (rmax - rmin) || 1;
+  const points = values.map((v, i) => {
+    const x = pad + (i / (values.length - 1)) * (w - 2 * pad);
+    const y = h - pad - ((v - rmin) / range) * (h - 2 * pad);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  const areaPoints = points.join(' ') + ` ${w-pad},${h} ${pad},${h}`;
+  return `<svg class="sensor-sparkline" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+    <defs><linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+    </linearGradient></defs>
+    <polygon class="spark-area" points="${areaPoints}"/>
+    <polyline points="${points.join(' ')}"/>
+  </svg>`;
+}
+
+function _renderAlertBanners(alerts) {
+  const container = document.getElementById('sensor-alert-banners');
+  if (!container) return;
+  if (!alerts || alerts.length === 0) { container.innerHTML = ''; return; }
+  container.innerHTML = alerts.map(a => `
+    <div class="sensor-alert-banner ${a.severity === 'warning' ? 'warning' : ''}">
+      <span class="alert-sensor">${a.sensor_name}</span>
+      <span class="alert-msg">${a.message}</span>
+      <span style="font-size:11px;opacity:0.7">${new Date(a.triggered_at*1000).toLocaleTimeString()}</span>
+      ${a.state === 'triggered' ? `<button onclick="acknowledgeSensorAlert('${a.id}')">Acknowledge</button>` : `<span style="font-size:11px;color:#28a745;">✓ Ack'd</span>`}
+    </div>
+  `).join('');
+}
+
+function toggleSensorExpand(sensorId, name, unit) {
+  if (_sensorExpanded[sensorId]) {
+    delete _sensorExpanded[sensorId];
+    _sensorChartOverlay = _sensorChartOverlay.filter(id => id !== sensorId);
+  } else {
+    _sensorExpanded[sensorId] = { name, unit };
+    if (!_sensorChartOverlay.includes(sensorId)) _sensorChartOverlay.push(sensorId);
+  }
+  _renderExpandedCharts();
+}
+
+function _renderExpandedCharts() {
+  const container = document.getElementById('sensor-expanded-charts');
+  if (!container || _sensorChartOverlay.length === 0) {
+    if (container) container.innerHTML = '';
+    return;
+  }
+  const deviceId = _sensorData.device_id;
+  // Fetch history for all expanded sensors
+  const fetches = _sensorChartOverlay.map(sid =>
+    fetch(`/api/sensors/${deviceId}/${sid}/history?last_n=300`).then(r => r.json())
+  );
+  Promise.all(fetches).then(results => {
+    let html = '<div class="sensor-chart-expanded">';
+    html += '<div class="sensor-chart-header"><h3>';
+    html += _sensorChartOverlay.map(sid => {
+      const info = _sensorExpanded[sid] || {};
+      return `${info.name || sid} (${info.unit || ''})`;
+    }).join(' + ');
+    html += '</h3><button onclick="clearExpandedCharts()" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:16px">✕</button></div>';
+    html += `<canvas id="sensor-chart-canvas" class="sensor-chart-canvas" width="800" height="200"></canvas>`;
+    html += '<div class="sensor-chart-controls">';
+    ['30s','1m','5m','15m','1h'].forEach(r => {
+      html += `<button onclick="setSensorTimeRange('${r}')">${r}</button>`;
+    });
+    html += '</div></div>';
+    container.innerHTML = html;
+
+    // Draw chart on canvas
+    const canvas = document.getElementById('sensor-chart-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 5; i++) {
+      const y = (i / 4) * H;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+
+    const colors = ['#00B4D8','#FF6B6B','#48BB78','#F6E05E','#9F7AEA','#FC8181'];
+    results.forEach((res, idx) => {
+      const history = res.history || [];
+      if (history.length < 2) return;
+      const vals = history.map(h => h.v);
+      const times = history.map(h => h.t);
+      const vmin = Math.min(...vals), vmax = Math.max(...vals);
+      const vrange = (vmax - vmin) || 1;
+      const tmin = times[0], tmax = times[times.length - 1];
+      const trange = (tmax - tmin) || 1;
+
+      ctx.strokeStyle = colors[idx % colors.length];
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      history.forEach((pt, i) => {
+        const x = ((pt.t - tmin) / trange) * W;
+        const y = H - ((pt.v - vmin) / vrange) * (H - 20) - 10;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+
+      // Label
+      ctx.fillStyle = colors[idx % colors.length];
+      ctx.font = '11px system-ui';
+      ctx.fillText(`${_sensorChartOverlay[idx]}: ${vals[vals.length-1]?.toFixed(1)}`, 10, 14 + idx * 16);
+    });
+  });
+}
+
+function clearExpandedCharts() {
+  _sensorExpanded = {};
+  _sensorChartOverlay = [];
+  const c = document.getElementById('sensor-expanded-charts');
+  if (c) c.innerHTML = '';
+}
+
+function setSensorLayout(layout) {
+  _sensorLayout = layout;
+  const grid = document.getElementById('sensor-grid');
+  if (grid) {
+    grid.className = 'sensor-grid' + (layout === 'list' ? ' list-layout' : '');
+  }
+  // Re-render toolbar buttons
+  document.querySelectorAll('.sensor-toolbar button').forEach(btn => {
+    if (btn.textContent.trim() === 'Grid') btn.className = layout === 'grid' ? 'active' : '';
+    if (btn.textContent.trim() === 'List') btn.className = layout === 'list' ? 'active' : '';
+  });
+}
+
+function setSensorTimeRange(range) {
+  // Map to last_n based on ~800ms polling
+  const map = {'30s': 38, '1m': 75, '5m': 375, '15m': 500, '1h': 500};
+  // Just re-render — data is capped at 500 anyway
+  _renderExpandedCharts();
+}
+
+function exportSensorCSV() {
+  if (!_sensorData.device_id) return;
+  const a = document.createElement('a');
+  a.href = `/api/sensors-export/${_sensorData.device_id}`;
+  a.download = `sensors_${_sensorData.device_id.slice(0,8)}.csv`;
+  a.click();
+}
+
+function acknowledgeSensorAlert(alertId) {
+  fetch(`/api/sensors/acknowledge/${alertId}`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' })
+    .then(r => r.json())
+    .then(() => _fetchSensors());
+}
+
+function openAlertConfig(sensorId, sensorName, deviceId) {
+  const existing = document.getElementById('sensor-alert-modal');
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.className = 'sensor-alert-modal';
+  modal.id = 'sensor-alert-modal';
+  modal.innerHTML = `
+    <div class="sensor-alert-modal-content">
+      <h3>🔔 Alert for ${sensorName}</h3>
+      <label>Alert Type</label>
+      <select id="alert-type-select">
+        <option value="above">Above Threshold</option>
+        <option value="below">Below Threshold</option>
+        <option value="range">Outside Range</option>
+        <option value="rate_of_change">Rate of Change</option>
+      </select>
+      <div id="alert-threshold-fields">
+        <label>Threshold</label>
+        <input type="number" id="alert-threshold" step="any" placeholder="Value">
+      </div>
+      <div id="alert-range-fields" style="display:none">
+        <label>Min</label><input type="number" id="alert-range-min" step="any">
+        <label>Max</label><input type="number" id="alert-range-max" step="any">
+      </div>
+      <div id="alert-rate-fields" style="display:none">
+        <label>Delta (change amount)</label><input type="number" id="alert-rate-delta" step="any">
+        <label>Window (seconds)</label><input type="number" id="alert-rate-window" value="10">
+      </div>
+      <div class="modal-actions">
+        <button onclick="document.getElementById('sensor-alert-modal').remove()">Cancel</button>
+        <button class="btn-primary" onclick="saveAlertRule('${sensorId}','${deviceId}')">Save Rule</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+
+  // Toggle fields based on type
+  document.getElementById('alert-type-select').addEventListener('change', e => {
+    const t = e.target.value;
+    document.getElementById('alert-threshold-fields').style.display = (t === 'above' || t === 'below') ? '' : 'none';
+    document.getElementById('alert-range-fields').style.display = t === 'range' ? '' : 'none';
+    document.getElementById('alert-rate-fields').style.display = t === 'rate_of_change' ? '' : 'none';
+  });
+}
+
+function saveAlertRule(sensorId, deviceId) {
+  const alertType = document.getElementById('alert-type-select').value;
+  const body = {
+    sensor_id: sensorId,
+    alert_type: alertType,
+    actions: ['visual', 'log'],
+  };
+  if (alertType === 'above' || alertType === 'below') {
+    body.threshold = parseFloat(document.getElementById('alert-threshold').value);
+  } else if (alertType === 'range') {
+    body.range_min = parseFloat(document.getElementById('alert-range-min').value);
+    body.range_max = parseFloat(document.getElementById('alert-range-max').value);
+  } else if (alertType === 'rate_of_change') {
+    body.rate_delta = parseFloat(document.getElementById('alert-rate-delta').value);
+    body.rate_window = parseFloat(document.getElementById('alert-rate-window').value);
+  }
+  fetch(`/api/sensors/${deviceId}/alerts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then(r => r.json()).then(() => {
+    const modal = document.getElementById('sensor-alert-modal');
+    if (modal) modal.remove();
+    _fetchSensors();
+  });
 }
 
 // ── Overview view ──────────────────────────────────────
@@ -5813,6 +6308,28 @@ function renderSidebar() {
       <span>Running Connectors (${connectorInstances.length})</span>
     </div>
     ${instances || '<div class="empty-hint">No connectors running. Click <em>Connect a Device</em> above to start one.</div>'}
+
+    <div class="sb-section-header">
+      <span>Plugins (${_plugins.length})</span>
+      <button class="sb-action" onclick="reloadPlugins()">↻ Reload</button>
+    </div>
+    ${_plugins.length ? _plugins.map(p => `
+      <div class="device-card" style="padding:8px 10px;margin-bottom:4px;opacity:${p.enabled?1:0.5}">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span>${(p.meta||{}).icon||'🔌'} <b>${(p.meta||{}).name||'?'}</b>
+            <span style="font-size:11px;color:var(--text-muted)">v${(p.meta||{}).version||'?'}</span>
+          </span>
+          <label style="font-size:11px;cursor:pointer">
+            <input type="checkbox" ${p.enabled?'checked':''} onchange="togglePlugin('${(p.meta||{}).name}',this.checked)">
+            ${p.enabled?'On':'Off'}
+          </label>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
+          ${(p.meta||{}).description||''}
+        </div>
+        ${p.error ? '<div style="font-size:11px;color:#f55;margin-top:2px">⚠ '+p.error+'</div>' : ''}
+      </div>
+    `).join('') : '<div class="empty-hint">No plugins installed. Add plugins to the <code>plugins/</code> directory.</div>'}
   `;
 }
 
@@ -6345,7 +6862,7 @@ async function bootstrap() {
     return;
   }
   connected = true;
-  await Promise.all([fetchVpe(), fetchConnectorClasses(), fetchConnectorInstances()]);
+  await Promise.all([fetchVpe(), fetchConnectorClasses(), fetchConnectorInstances(), fetchPlugins()]);
 
   // Fetch scenarios, templates, and part types once at boot
   await Promise.all([
