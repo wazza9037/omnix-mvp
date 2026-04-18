@@ -190,14 +190,39 @@ function initThree() {
   renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setSize(rect.width, rect.height);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.1;
 
-  const ambient = new THREE.AmbientLight(0x404060, 1.0);
-  scene.add(ambient);
-  const dir = new THREE.DirectionalLight(0xffffff, 0.8);
-  dir.position.set(20, 30, 10);
-  scene.add(dir);
-  const hemi = new THREE.HemisphereLight(0x00b4d8, 0x0a1120, 0.4);
-  scene.add(hemi);
+  // Key light
+  const key = new THREE.DirectionalLight(0xfff4e0, 1.1);
+  key.position.set(15, 25, 20);
+  key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.camera.near = 0.5;
+  key.shadow.camera.far = 80;
+  key.shadow.camera.left = -30;
+  key.shadow.camera.right = 30;
+  key.shadow.camera.top = 30;
+  key.shadow.camera.bottom = -30;
+  scene.add(key);
+
+  // Fill light
+  const fill = new THREE.DirectionalLight(0x80b0ff, 0.35);
+  fill.position.set(-10, 10, -10);
+  scene.add(fill);
+
+  // Ambient + Hemisphere
+  scene.add(new THREE.AmbientLight(0x3a4060, 0.6));
+  scene.add(new THREE.HemisphereLight(0x00b4d8, 0x0a1120, 0.45));
+
+  const groundMat = new THREE.ShadowMaterial({ opacity: 0.35 });
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.receiveShadow = true;
+  scene.add(ground);
 
   groundGrid = new THREE.GridHelper(60, 60, 0x1e2d45, 0x141e30);
   scene.add(groundGrid);
@@ -274,6 +299,11 @@ function animate() {
     animProgress += 0.003;
     if (animProgress >= 1) { animProgress = 0; animating = false; }
     updateDevicePosition(animProgress);
+  }
+  if (deviceMesh) {
+    deviceMesh.traverse(child => {
+      if (child.userData.isRotor) child.rotation.y += 0.15;
+    });
   }
   renderer.render(scene, camera);
 }
@@ -409,40 +439,639 @@ function createMeshFromParams(meshParams) {
 // ─── Fallback Hardcoded Meshes (for simulated devices) ───
 
 function createDeviceMesh(deviceType) {
-  let mesh;
+  const group = new THREE.Group();
+
+  // Material palette
+  const matStructural = new THREE.MeshStandardMaterial({ color: 0x3a4555, metalness: 0.7, roughness: 0.3 });
+  const matAccentTeal = new THREE.MeshStandardMaterial({ color: 0x00b4d8, metalness: 0.4, roughness: 0.4 });
+  const matDarkJoint = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.5, roughness: 0.5 });
+  const matRubber = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.1, roughness: 0.8 });
+  const matLEDGreen = new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x10b981, emissiveIntensity: 0.5 });
+  const matLEDRed = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xef4444, emissiveIntensity: 0.5 });
+  const matLEDOrange = new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0xf59e0b, emissiveIntensity: 0.5 });
+
   if (deviceType === 'drone') {
-    const group = new THREE.Group();
-    group.add(new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.3, 0.8), new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.6, roughness: 0.3 })));
-    [[0.7,0,0.7],[-0.7,0,0.7],[0.7,0,-0.7],[-0.7,0,-0.7]].forEach(([ax,ay,az]) => {
-      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.2), new THREE.MeshStandardMaterial({ color: 0x555555 }));
-      arm.rotation.z = Math.atan2(az, ax); arm.rotation.x = Math.PI / 2 * (az > 0 ? 1 : -1) * 0.3;
-      arm.position.set(ax * 0.5, ay, az * 0.5); group.add(arm);
-      const rotor = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.03, 8, 24), new THREE.MeshStandardMaterial({ color: 0x00b4d8, emissive: 0x00b4d8, emissiveIntensity: 0.2 }));
-      rotor.position.set(ax, 0.15, az); rotor.rotation.x = Math.PI / 2; group.add(rotor);
+    // Quadcopter: central body + 4 arms with motors + rotors + camera gimbal + landing legs + LEDs
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.3, 0.8), matStructural);
+    body.castShadow = true;
+    group.add(body);
+
+    // 4 arms with motors and rotors
+    const armPositions = [[0.7,0,0.7],[-0.7,0,0.7],[0.7,0,-0.7],[-0.7,0,-0.7]];
+    armPositions.forEach(([ax, ay, az]) => {
+      // Arm
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.2), matStructural);
+      arm.castShadow = true;
+      arm.position.set(ax * 0.5, ay, az * 0.5);
+      arm.rotation.z = Math.atan2(az, ax);
+      group.add(arm);
+
+      // Motor mount
+      const motor = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.08), matDarkJoint);
+      motor.castShadow = true;
+      motor.position.set(ax, 0.15, az);
+      group.add(motor);
+
+      // Rotor (spinning)
+      const rotor = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.03, 8, 24), matAccentTeal);
+      rotor.castShadow = true;
+      rotor.position.set(ax, 0.15, az);
+      rotor.rotation.x = Math.PI / 2;
+      rotor.userData.isRotor = true;
+      group.add(rotor);
     });
-    mesh = group;
+
+    // Camera gimbal underneath
+    const gimbalFrame = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.08, 0.4), matStructural);
+    gimbalFrame.castShadow = true;
+    gimbalFrame.position.y = -0.3;
+    group.add(gimbalFrame);
+    const gimbalLens = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 12), matDarkJoint);
+    gimbalLens.castShadow = true;
+    gimbalLens.position.set(0, -0.5, 0);
+    group.add(gimbalLens);
+
+    // Landing legs (4 thin cylinders)
+    [[0.5,-0.2,0.5],[-0.5,-0.2,0.5],[0.5,-0.2,-0.5],[-0.5,-0.2,-0.5]].forEach(([lx, ly, lz]) => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.4), matRubber);
+      leg.castShadow = true;
+      leg.position.set(lx, ly, lz);
+      group.add(leg);
+    });
+
+    // Front green LED + rear red LED
+    const ledFront = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), matLEDGreen);
+    ledFront.castShadow = true;
+    ledFront.position.set(0, 0.2, 0.5);
+    group.add(ledFront);
+    const ledRear = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), matLEDRed);
+    ledRear.castShadow = true;
+    ledRear.position.set(0, 0.2, -0.5);
+    group.add(ledRear);
+
   } else if (deviceType === 'robot_arm') {
-    const group = new THREE.Group();
-    group.add(new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 0.3, 16), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.7 })));
-    const lower = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.8, 0.15), new THREE.MeshStandardMaterial({ color: 0x00b4d8 }));
-    lower.position.y = 0.55; group.add(lower);
-    const upper = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.6, 0.12), new THREE.MeshStandardMaterial({ color: 0x0088aa }));
-    upper.position.y = 1.1; group.add(upper);
-    const ee = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x10b981, emissiveIntensity: 0.3 }));
-    ee.position.y = 1.5; group.add(ee);
-    mesh = group;
-  } else {
-    const group = new THREE.Group();
-    group.add(new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffd700, emissiveIntensity: 0.5 })));
+    // 6-DOF robotic arm: heavy base + 3 segments + gripper
+    // Base
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 0.4, 16), matStructural);
+    base.castShadow = true;
+    group.add(base);
+
+    // Shoulder joint
+    const shoulderJoint = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 12), matDarkJoint);
+    shoulderJoint.castShadow = true;
+    shoulderJoint.position.y = 0.35;
+    group.add(shoulderJoint);
+
+    // Upper arm (teal)
+    const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.6), matAccentTeal);
+    upperArm.castShadow = true;
+    upperArm.position.y = 0.8;
+    group.add(upperArm);
+
+    // Elbow joint
+    const elbowJoint = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), matDarkJoint);
+    elbowJoint.castShadow = true;
+    elbowJoint.position.y = 1.25;
+    group.add(elbowJoint);
+
+    // Forearm (slightly darker blue)
+    const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.5), new THREE.MeshStandardMaterial({ color: 0x0088aa, metalness: 0.4, roughness: 0.4 }));
+    forearm.castShadow = true;
+    forearm.position.y = 1.6;
+    group.add(forearm);
+
+    // Wrist joint
+    const wristJoint = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 12), matDarkJoint);
+    wristJoint.castShadow = true;
+    wristJoint.position.y = 1.95;
+    group.add(wristJoint);
+
+    // Gripper base
+    const gripperBase = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 0.2), matStructural);
+    gripperBase.castShadow = true;
+    gripperBase.position.y = 2.15;
+    group.add(gripperBase);
+
+    // Two gripper fingers with rubber tips
+    const fingerL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.25, 0.05), matAccentTeal);
+    fingerL.castShadow = true;
+    fingerL.position.set(-0.1, 2.2, 0);
+    group.add(fingerL);
+    const fingerLTip = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 0.05), matRubber);
+    fingerLTip.castShadow = true;
+    fingerLTip.position.set(-0.1, 2.55, 0);
+    group.add(fingerLTip);
+
+    const fingerR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.25, 0.05), matAccentTeal);
+    fingerR.castShadow = true;
+    fingerR.position.set(0.1, 2.2, 0);
+    group.add(fingerR);
+    const fingerRTip = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, 0.05), matRubber);
+    fingerRTip.castShadow = true;
+    fingerRTip.position.set(0.1, 2.55, 0);
+    group.add(fingerRTip);
+
+  } else if (deviceType === 'smart_light') {
+    // Bulb with emissive glow + metallic base + light rays
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffd700, emissiveIntensity: 0.6 }));
+    bulb.castShadow = true;
+    bulb.position.y = 0.4;
+    group.add(bulb);
+
+    // Metallic base
+    const bulbBase = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 0.15, 16), matStructural);
+    bulbBase.castShadow = true;
+    bulbBase.position.y = 0.1;
+    group.add(bulbBase);
+
+    // Light rays (6 transparent emissive boxes)
     for (let i = 0; i < 6; i++) {
-      const ray = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.5), new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffd700, emissiveIntensity: 0.3 }));
-      ray.rotation.z = (i / 6) * Math.PI * 2;
-      ray.position.set(0.4 * Math.cos((i / 6) * Math.PI * 2), 0, 0.4 * Math.sin((i / 6) * Math.PI * 2));
+      const angle = (i / 6) * Math.PI * 2;
+      const ray = new THREE.Mesh(
+        new THREE.BoxGeometry(0.1, 0.04, 0.3),
+        new THREE.MeshStandardMaterial({ color: 0xffd700, emissive: 0xffd700, emissiveIntensity: 0.4, transparent: true, opacity: 0.3 })
+      );
+      ray.castShadow = true;
+      ray.position.set(0.35 * Math.cos(angle), 0.4, 0.35 * Math.sin(angle));
+      ray.rotation.y = angle;
       group.add(ray);
     }
-    mesh = group;
+
+    // WiFi indicator (small animated torus)
+    const wifi = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.02, 8, 16), matLEDGreen);
+    wifi.castShadow = true;
+    wifi.position.y = 0.05;
+    wifi.rotation.x = Math.PI / 2.5;
+    group.add(wifi);
+
+  } else if (deviceType === 'ground_robot') {
+    // Rover: rectangular chassis + 4 wheels + LIDAR tower + camera + bumper + LED strip
+    const chassis = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.35, 1.0), matStructural);
+    chassis.castShadow = true;
+    group.add(chassis);
+
+    // 4 wheels (2 drive + 2 passive/caster)
+    [[0.35, -0.2, 0.25],[-0.35, -0.2, 0.25],[0.35, -0.2, -0.25],[-0.35, -0.2, -0.25]].forEach(([wx, wy, wz]) => {
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.08), matRubber);
+      wheel.castShadow = true;
+      wheel.position.set(wx, wy, wz);
+      wheel.rotation.z = Math.PI / 2;
+      group.add(wheel);
+    });
+
+    // LIDAR tower on top
+    const lidarBase = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.15), matStructural);
+    lidarBase.castShadow = true;
+    lidarBase.position.y = 0.35;
+    group.add(lidarBase);
+    const lidarHead = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.08, 0.1, 16), matDarkJoint);
+    lidarHead.castShadow = true;
+    lidarHead.position.y = 0.55;
+    group.add(lidarHead);
+
+    // Camera on front
+    const camera = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.08), matDarkJoint);
+    camera.castShadow = true;
+    camera.position.set(0, 0.05, 0.5);
+    group.add(camera);
+
+    // Bumper (front bar)
+    const bumper = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.05, 0.05), matAccentTeal);
+    bumper.castShadow = true;
+    bumper.position.set(0, -0.15, 0.55);
+    group.add(bumper);
+
+    // LED strip (6 small LEDs on bumper)
+    for (let i = 0; i < 6; i++) {
+      const ledX = (i - 2.5) * 0.1;
+      const led = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), matLEDOrange);
+      led.castShadow = true;
+      led.position.set(ledX, -0.12, 0.55);
+      group.add(led);
+    }
+
+  } else if (deviceType === 'humanoid') {
+    // Bipedal humanoid: head + torso + arms + legs + chest accent
+    // Head
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 12), matStructural);
+    head.castShadow = true;
+    head.position.y = 2.0;
+    group.add(head);
+
+    // Visor
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.1, 0.08), matDarkJoint);
+    visor.castShadow = true;
+    visor.position.set(0, 2.0, 0.2);
+    group.add(visor);
+
+    // Torso
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.8, 0.25), matStructural);
+    torso.castShadow = true;
+    torso.position.y = 1.2;
+    group.add(torso);
+
+    // Chest accent strip
+    const chestAccent = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.6, 0.3), matAccentTeal);
+    chestAccent.castShadow = true;
+    chestAccent.position.set(0, 1.2, 0.15);
+    group.add(chestAccent);
+
+    // Left arm (upper + lower + hand)
+    const armL_upper = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.35), matStructural);
+    armL_upper.castShadow = true;
+    armL_upper.position.set(-0.35, 1.5, 0);
+    group.add(armL_upper);
+    const armL_lower = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.35), matAccentTeal);
+    armL_lower.castShadow = true;
+    armL_lower.position.set(-0.35, 1.0, 0);
+    group.add(armL_lower);
+    const handL = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), matRubber);
+    handL.castShadow = true;
+    handL.position.set(-0.35, 0.75, 0);
+    group.add(handL);
+
+    // Right arm (same structure)
+    const armR_upper = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.35), matStructural);
+    armR_upper.castShadow = true;
+    armR_upper.position.set(0.35, 1.5, 0);
+    group.add(armR_upper);
+    const armR_lower = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.35), matAccentTeal);
+    armR_lower.castShadow = true;
+    armR_lower.position.set(0.35, 1.0, 0);
+    group.add(armR_lower);
+    const handR = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), matRubber);
+    handR.castShadow = true;
+    handR.position.set(0.35, 0.75, 0);
+    group.add(handR);
+
+    // Left leg (upper + lower + foot)
+    const legL_upper = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.08, 0.45), matStructural);
+    legL_upper.castShadow = true;
+    legL_upper.position.set(-0.15, 0.7, 0);
+    group.add(legL_upper);
+    const legL_lower = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.45), matAccentTeal);
+    legL_lower.castShadow = true;
+    legL_lower.position.set(-0.15, 0.1, 0);
+    group.add(legL_lower);
+    const footL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.08, 0.2), matRubber);
+    footL.castShadow = true;
+    footL.position.set(-0.15, -0.25, 0);
+    group.add(footL);
+
+    // Right leg (same structure)
+    const legR_upper = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.08, 0.45), matStructural);
+    legR_upper.castShadow = true;
+    legR_upper.position.set(0.15, 0.7, 0);
+    group.add(legR_upper);
+    const legR_lower = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.45), matAccentTeal);
+    legR_lower.castShadow = true;
+    legR_lower.position.set(0.15, 0.1, 0);
+    group.add(legR_lower);
+    const footR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.08, 0.2), matRubber);
+    footR.castShadow = true;
+    footR.position.set(0.15, -0.25, 0);
+    group.add(footR);
+
+  } else if (deviceType === 'hexapod') {
+    // Insectoid 6-legged robot
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, 0.8), matStructural);
+    body.castShadow = true;
+    group.add(body);
+
+    // Head with sensors
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 12), matStructural);
+    head.castShadow = true;
+    head.position.set(0, 0.1, 0.45);
+    group.add(head);
+
+    // Two eye sensors
+    const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), matLEDGreen);
+    eyeL.castShadow = true;
+    eyeL.position.set(-0.08, 0.15, 0.58);
+    group.add(eyeL);
+    const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), matLEDGreen);
+    eyeR.castShadow = true;
+    eyeR.position.set(0.08, 0.15, 0.58);
+    group.add(eyeR);
+
+    // Antennae (2 thin cylinders)
+    [[−0.1, 0.25, 0.55], [0.1, 0.25, 0.55]].forEach(([ax, ay, az]) => {
+      const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3), matAccentTeal);
+      antenna.castShadow = true;
+      antenna.position.set(ax, ay, az);
+      antenna.rotation.z = 0.3;
+      group.add(antenna);
+    });
+
+    // 6 legs (3 per side, each with 3 segments: coxa, femur, tibia)
+    const legSides = [
+      { side: -1, positions: [[0, 0.25], [0, -0.25], [0, -0.75]] }, // Left side
+      { side: 1, positions: [[0, 0.25], [0, -0.25], [0, -0.75]] }  // Right side
+    ];
+
+    legSides.forEach(legSide => {
+      legSide.positions.forEach(([by, bz]) => {
+        const basePosX = legSide.side * 0.25;
+
+        // Coxa (joint at body)
+        const coxa = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.1), matDarkJoint);
+        coxa.castShadow = true;
+        coxa.position.set(basePosX, by, bz);
+        coxa.rotation.z = Math.PI / 2;
+        group.add(coxa);
+
+        // Femur (first segment)
+        const femur = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.03, 0.25), matAccentTeal);
+        femur.castShadow = true;
+        femur.position.set(basePosX + legSide.side * 0.15, by - 0.15, bz);
+        femur.rotation.z = -Math.PI / 6;
+        group.add(femur);
+
+        // Tibia (second segment)
+        const tibia = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.025, 0.2), matStructural);
+        tibia.castShadow = true;
+        tibia.position.set(basePosX + legSide.side * 0.3, by - 0.35, bz);
+        tibia.rotation.z = Math.PI / 3;
+        group.add(tibia);
+      });
+    });
+
+  } else if (deviceType === 'warehouse') {
+    // AGV: flat platform with 4 guide wheels + cargo area + safety lights + guide sensor
+    const platform = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.15, 1.2), matStructural);
+    platform.castShadow = true;
+    group.add(platform);
+
+    // Cargo area on top
+    const cargo = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.4, 1.0), matStructural);
+    cargo.castShadow = true;
+    cargo.position.y = 0.35;
+    group.add(cargo);
+
+    // 4 guide wheels (small, on corners)
+    [[0.3, -0.1, 0.4],[-0.3, -0.1, 0.4],[0.3, -0.1, -0.4],[-0.3, -0.1, -0.4]].forEach(([wx, wy, wz]) => {
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.06), matRubber);
+      wheel.castShadow = true;
+      wheel.position.set(wx, wy, wz);
+      wheel.rotation.z = Math.PI / 2;
+      group.add(wheel);
+    });
+
+    // Safety lights (orange emissive) at corners
+    [[0.35, 0.2, 0.55],[-0.35, 0.2, 0.55],[0.35, 0.2, -0.55],[-0.35, 0.2, -0.55]].forEach(([lx, ly, lz]) => {
+      const light = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.08), matLEDOrange);
+      light.castShadow = true;
+      light.position.set(lx, ly, lz);
+      group.add(light);
+    });
+
+    // Guide sensor strip (front)
+    const sensorBar = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.02, 0.08), matDarkJoint);
+    sensorBar.castShadow = true;
+    sensorBar.position.set(0, 0.08, 0.62);
+    group.add(sensorBar);
+
+  } else if (deviceType === 'fixed_wing') {
+    // Fixed-wing aircraft: fuselage + wings + tail + propeller + landing gear
+    // Fuselage (elongated body)
+    const fuselage = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 1.2), matStructural);
+    fuselage.castShadow = true;
+    fuselage.position.y = 0.1;
+    fuselage.rotation.z = Math.PI / 2;
+    group.add(fuselage);
+
+    // Cockpit/nose
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.3), matStructural);
+    nose.castShadow = true;
+    nose.position.set(0.65, 0.1, 0);
+    nose.rotation.z = -Math.PI / 2;
+    group.add(nose);
+
+    // Main wings (large box)
+    const mainWing = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.08, 0.3), matAccentTeal);
+    mainWing.castShadow = true;
+    mainWing.position.y = 0.15;
+    group.add(mainWing);
+
+    // Tail section (horizontal stabilizer)
+    const tailWing = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.06, 0.2), matAccentTeal);
+    tailWing.castShadow = true;
+    tailWing.position.set(-0.5, 0.1, 0);
+    group.add(tailWing);
+
+    // Vertical stabilizer (fin)
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.25, 0.2), matStructural);
+    fin.castShadow = true;
+    fin.position.set(-0.5, 0.25, 0);
+    group.add(fin);
+
+    // Propeller (front, spinning)
+    const propeller = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.03, 8, 24), matDarkJoint);
+    propeller.castShadow = true;
+    propeller.position.set(0.65, 0.1, 0);
+    propeller.rotation.y = 0;
+    propeller.userData.isRotor = true;
+    group.add(propeller);
+
+    // Landing gear (2 struts + 2 wheels)
+    [[0.2, -0.15], [-0.2, -0.15]].forEach(([gx, gz]) => {
+      const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.25), matStructural);
+      strut.castShadow = true;
+      strut.position.set(gx, -0.05, gz);
+      group.add(strut);
+
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.05), matRubber);
+      wheel.castShadow = true;
+      wheel.position.set(gx, -0.25, gz);
+      wheel.rotation.z = Math.PI / 2;
+      group.add(wheel);
+    });
+
+  } else if (deviceType === 'gripper') {
+    // Gripper end-effector: mounting flange + actuator body + 2 jaw fingers + force sensor
+    // Mounting flange
+    const flange = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.08), matStructural);
+    flange.castShadow = true;
+    group.add(flange);
+
+    // Actuator body (main housing)
+    const actuator = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.35, 0.16), matStructural);
+    actuator.castShadow = true;
+    actuator.position.y = 0.25;
+    group.add(actuator);
+
+    // Jaw finger left (parallel jaw)
+    const jawL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.3, 0.06), matAccentTeal);
+    jawL.castShadow = true;
+    jawL.position.set(-0.12, 0.35, 0);
+    group.add(jawL);
+
+    // Rubber friction pad on left finger
+    const padL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.08, 0.08), matRubber);
+    padL.castShadow = true;
+    padL.position.set(-0.12, 0.6, 0);
+    group.add(padL);
+
+    // Jaw finger right
+    const jawR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.3, 0.06), matAccentTeal);
+    jawR.castShadow = true;
+    jawR.position.set(0.12, 0.35, 0);
+    group.add(jawR);
+
+    // Rubber friction pad on right finger
+    const padR = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.08, 0.08), matRubber);
+    padR.castShadow = true;
+    padR.position.set(0.12, 0.6, 0);
+    group.add(padR);
+
+    // Force sensor indicator (small box at bottom)
+    const forceSensor = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.05, 0.14), matDarkJoint);
+    forceSensor.castShadow = true;
+    forceSensor.position.y = 0.05;
+    group.add(forceSensor);
+
+    // Sensor activity LEDs
+    const sensorLED1 = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), matLEDGreen);
+    sensorLED1.castShadow = true;
+    sensorLED1.position.set(-0.05, 0.1, 0.08);
+    group.add(sensorLED1);
+    const sensorLED2 = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), matLEDGreen);
+    sensorLED2.castShadow = true;
+    sensorLED2.position.set(0.05, 0.1, 0.08);
+    group.add(sensorLED2);
+
+  } else if (deviceType === 'quadruped') {
+    // Spot-like quadruped: rectangular body + head + 4 articulated legs
+    // Main body
+    const bodyBox = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 1.0), matStructural);
+    bodyBox.castShadow = true;
+    group.add(bodyBox);
+
+    // Head/sensor unit at front
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.25, 0.25), matStructural);
+    head.castShadow = true;
+    head.position.set(0, 0.15, 0.6);
+    group.add(head);
+
+    // Camera on head
+    const camera = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), matDarkJoint);
+    camera.castShadow = true;
+    camera.position.set(0, 0.2, 0.75);
+    group.add(camera);
+
+    // 4 legs (hip/upper/knee/lower/foot structure per leg)
+    const legPositions = [[0.15, -0.2, 0.25],[-0.15, -0.2, 0.25],[0.15, -0.2, -0.25],[-0.15, -0.2, -0.25]];
+
+    legPositions.forEach(([baseLegX, baseLegY, baseLegZ]) => {
+      // Hip
+      const hip = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), matDarkJoint);
+      hip.castShadow = true;
+      hip.position.set(baseLegX, baseLegY, baseLegZ);
+      group.add(hip);
+
+      // Upper leg
+      const upperLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.25), matAccentTeal);
+      upperLeg.castShadow = true;
+      upperLeg.position.set(baseLegX, baseLegY - 0.15, baseLegZ);
+      upperLeg.rotation.z = Math.PI / 2;
+      group.add(upperLeg);
+
+      // Knee
+      const knee = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), matDarkJoint);
+      knee.castShadow = true;
+      knee.position.set(baseLegX, baseLegY - 0.3, baseLegZ);
+      group.add(knee);
+
+      // Lower leg
+      const lowerLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.25), matStructural);
+      lowerLeg.castShadow = true;
+      lowerLeg.position.set(baseLegX, baseLegY - 0.45, baseLegZ);
+      lowerLeg.rotation.z = Math.PI / 2;
+      group.add(lowerLeg);
+
+      // Foot
+      const foot = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), matRubber);
+      foot.castShadow = true;
+      foot.position.set(baseLegX, baseLegY - 0.6, baseLegZ);
+      group.add(foot);
+    });
+
+  } else if (deviceType === 'marine') {
+    // ROV (Remotely Operated Vehicle): cylindrical body + transparent dome + 4 thrusters + manipulator arm + LEDs
+    // Main hull (cylindrical)
+    const hull = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.22, 0.8), matStructural);
+    hull.castShadow = true;
+    hull.rotation.z = Math.PI / 2;
+    hull.position.y = 0.1;
+    group.add(hull);
+
+    // Transparent dome at front
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 16), new THREE.MeshStandardMaterial({ color: 0x87ceeb, metalness: 0.2, roughness: 0.1, transparent: true, opacity: 0.4 }));
+    dome.castShadow = true;
+    dome.position.set(0.45, 0.1, 0);
+    group.add(dome);
+
+    // 4 thruster pods (2 front vertical, 2 rear lateral)
+    const thrusterPods = [
+      {pos: [0.2, 0.25, 0.2], axis: 'y'}, // Front-top
+      {pos: [0.2, -0.05, 0.2], axis: 'y'}, // Front-bottom
+      {pos: [-0.2, 0.15, 0.2], axis: 'x'}, // Rear-left
+      {pos: [-0.2, 0.15, -0.2], axis: 'x'} // Rear-right
+    ];
+
+    thrusterPods.forEach(pod => {
+      const podBody = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.25), matAccentTeal);
+      podBody.castShadow = true;
+      if (pod.axis === 'x') podBody.rotation.x = Math.PI / 2;
+      else podBody.rotation.z = Math.PI / 2;
+      podBody.position.set(pod.pos[0], pod.pos[1], pod.pos[2]);
+      group.add(podBody);
+
+      // Propeller on thruster
+      const propeller = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.02, 6, 16), matDarkJoint);
+      propeller.castShadow = true;
+      propeller.position.set(pod.pos[0], pod.pos[1], pod.pos[2]);
+      if (pod.axis === 'x') propeller.rotation.y = 0;
+      else propeller.rotation.x = Math.PI / 2;
+      propeller.userData.isRotor = true;
+      group.add(propeller);
+    });
+
+    // Manipulator arm (simplified: base + 2-link arm)
+    const armBase = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.15, 0.08), matStructural);
+    armBase.castShadow = true;
+    armBase.position.set(-0.25, -0.1, 0);
+    group.add(armBase);
+
+    const armLink1 = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.2), matAccentTeal);
+    armLink1.castShadow = true;
+    armLink1.position.set(-0.35, -0.1, 0);
+    armLink1.rotation.z = Math.PI / 3;
+    group.add(armLink1);
+
+    const armLink2 = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.18), matStructural);
+    armLink2.castShadow = true;
+    armLink2.position.set(-0.52, 0.0, 0);
+    armLink2.rotation.z = -Math.PI / 4;
+    group.add(armLink2);
+
+    // LED lights (3 white LEDs along hull)
+    for (let i = -1; i <= 1; i++) {
+      const ledX = i * 0.15;
+      const led = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.5 }));
+      led.castShadow = true;
+      led.position.set(ledX, 0.25, 0);
+      group.add(led);
+    }
+
+  } else {
+    // Fallback for unknown types
+    const fallback = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), matAccentTeal);
+    fallback.castShadow = true;
+    group.add(fallback);
   }
-  deviceMesh = mesh;
+
+  deviceMesh = group;
 }
 
 // ─── Show VPE device in 3D view (no motion, just the model) ───

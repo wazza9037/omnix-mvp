@@ -2158,6 +2158,13 @@ function animate() {
     updateDeviceAlongPath(animProgress);
   }
 
+  // Rotor animation: spin meshes marked with userData.isRotor
+  if (deviceMesh) {
+    deviceMesh.traverse(child => {
+      if (child.userData.isRotor) child.rotation.y += 0.15;
+    });
+  }
+
   renderer.render(scene, camera);
 }
 
@@ -2205,40 +2212,447 @@ function buildMeshFromParams(params) {
 
 function buildSimMesh(deviceType) {
   const group = new THREE.Group();
+  const matDarkMetal = new THREE.MeshStandardMaterial({ color: 0x3a4555, metalness: 0.7, roughness: 0.3 });
+  const matAccent = new THREE.MeshStandardMaterial({ color: 0x00b4d8, metalness: 0.4, roughness: 0.4 });
+  const matJoint = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.5, roughness: 0.5 });
+  const matRubber = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.1, roughness: 0.8 });
+
   if (deviceType === 'drone') {
-    group.add(new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.3, 1.1), new THREE.MeshStandardMaterial({ color: 0x2e3a52, metalness: 0.55, roughness: 0.35 })));
+    // Central body: sleek rounded box
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.3, 1.1), new THREE.MeshStandardMaterial({ color: 0x2e3a52, metalness: 0.55, roughness: 0.35 }));
+    group.add(body);
+
+    // 4 arms with motor mounts and rotor discs
     [[0.9,0,0.9],[-0.9,0,0.9],[0.9,0,-0.9],[-0.9,0,-0.9]].forEach(([ax, ay, az]) => {
-      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.1, 12), new THREE.MeshStandardMaterial({ color: 0x444, metalness: 0.6, roughness: 0.4 }));
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.1, 12), matRubber);
       arm.position.set(ax * 0.5, ay, az * 0.5);
       arm.rotation.z = Math.PI/2; arm.rotation.y = Math.atan2(az, ax);
       group.add(arm);
-      const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.12, 16), new THREE.MeshStandardMaterial({ color: 0x222 }));
+
+      const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.12, 16), matJoint);
       hub.position.set(ax, 0.12, az); group.add(hub);
+
       const rotor = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.03, 8, 32), new THREE.MeshStandardMaterial({ color: 0x00b4d8, emissive: 0x00b4d8, emissiveIntensity: 0.25 }));
-      rotor.position.set(ax, 0.2, az); rotor.rotation.x = Math.PI/2; group.add(rotor);
+      rotor.position.set(ax, 0.2, az); rotor.rotation.x = Math.PI/2;
+      rotor.userData.isRotor = true;
+      group.add(rotor);
     });
+
+    // Camera gimbal underneath
+    const gimbal = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 12), matAccent);
+    gimbal.position.set(0, -0.25, 0); group.add(gimbal);
+    const gimbalArm = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.25, 8), matAccent);
+    gimbalArm.position.set(0, -0.12, 0); group.add(gimbalArm);
+
+    // 4 landing legs (thin cylinders angled outward)
+    [[-0.35,-0.15,-0.35],[0.35,-0.15,-0.35],[-0.35,-0.15,0.35],[0.35,-0.15,0.35]].forEach(([lx, ly, lz]) => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.4, 6), matRubber);
+      leg.position.set(lx, ly, lz);
+      leg.rotation.z = Math.PI/6 * (lx > 0 ? 1 : -1);
+      group.add(leg);
+    });
+
+    // LED indicators on front (green) and back (red)
+    const ledFront = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), new THREE.MeshStandardMaterial({ color: 0x00ff00, emissive: 0x00ff00, emissiveIntensity: 0.6 }));
+    ledFront.position.set(0, 0.1, -0.6); group.add(ledFront);
+    const ledBack = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), new THREE.MeshStandardMaterial({ color: 0xff0000, emissive: 0xff0000, emissiveIntensity: 0.6 }));
+    ledBack.position.set(0, 0.1, 0.6); group.add(ledBack);
+
+    // Battery indicator on top
+    const battery = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.04, 0.15), new THREE.MeshStandardMaterial({ color: 0x00b4d8, emissive: 0x00b4d8, emissiveIntensity: 0.4 }));
+    battery.position.set(0, 0.2, 0); group.add(battery);
+
   } else if (deviceType === 'robot_arm') {
-    group.add(new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 0.35, 24), new THREE.MeshStandardMaterial({ color: 0x333, metalness: 0.7, roughness: 0.35 })));
-    const s1 = new THREE.Mesh(new THREE.BoxGeometry(0.32, 1.0, 0.32), new THREE.MeshStandardMaterial({ color: 0x00b4d8, metalness: 0.4, roughness: 0.4 }));
-    s1.position.y = 0.68; group.add(s1);
-    const joint = new THREE.Mesh(new THREE.SphereGeometry(0.22, 16, 16), new THREE.MeshStandardMaterial({ color: 0x222 }));
-    joint.position.y = 1.22; group.add(joint);
-    const s2 = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.85, 0.26), new THREE.MeshStandardMaterial({ color: 0x0088aa, metalness: 0.4, roughness: 0.4 }));
-    s2.position.y = 1.7; group.add(s2);
-    const ee = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.3, 8), new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x10b981, emissiveIntensity: 0.3 }));
-    ee.position.y = 2.27; group.add(ee);
-  } else { // smart_light & fallback
+    // Heavy circular base
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 0.35, 24), matDarkMetal);
+    group.add(base);
+
+    // Shoulder joint and upper arm
+    const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 16), matJoint);
+    shoulder.position.set(0, 0.4, 0); group.add(shoulder);
+    const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.14, 1.0, 16), matAccent);
+    upperArm.position.set(0, 0.95, 0); group.add(upperArm);
+
+    // Elbow joint
+    const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), matJoint);
+    elbow.position.set(0, 1.5, 0); group.add(elbow);
+
+    // Forearm
+    const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.12, 0.85, 16), new THREE.MeshStandardMaterial({ color: 0x0088aa, metalness: 0.4, roughness: 0.4 }));
+    forearm.position.set(0, 2.0, 0); group.add(forearm);
+
+    // Wrist joint
+    const wrist = new THREE.Mesh(new THREE.SphereGeometry(0.15, 14, 14), matJoint);
+    wrist.position.set(0, 2.45, 0); group.add(wrist);
+
+    // Wrist rotation assembly
+    const wristRot = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.1, 12), matAccent);
+    wristRot.position.set(0, 2.55, 0); group.add(wristRot);
+
+    // Gripper end-effector with two jaw fingers
+    const finger1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.25, 0.05), new THREE.MeshStandardMaterial({ color: 0x10b981, metalness: 0.3, roughness: 0.5 }));
+    finger1.position.set(-0.12, 2.8, 0); group.add(finger1);
+    const finger2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.25, 0.05), new THREE.MeshStandardMaterial({ color: 0x10b981, metalness: 0.3, roughness: 0.5 }));
+    finger2.position.set(0.12, 2.8, 0); group.add(finger2);
+
+    // Gripper tips with emissive indicator
+    const tipL = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x10b981, emissiveIntensity: 0.3 }));
+    tipL.position.set(-0.12, 2.65, 0); group.add(tipL);
+    const tipR = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x10b981, emissiveIntensity: 0.3 }));
+    tipR.position.set(0.12, 2.65, 0); group.add(tipR);
+
+    // Cable routing suggestion along arm
+    const cable1 = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.02, 4, 16), matAccent);
+    cable1.position.set(0, 1.2, 0); cable1.rotation.x = Math.PI/4; group.add(cable1);
+
+  } else if (deviceType === 'smart_light') {
+    // Bulb shape: warm yellow emissive sphere
     const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.5, 24, 24), new THREE.MeshStandardMaterial({ color: 0xffeeaa, emissive: 0xffd700, emissiveIntensity: 0.8 }));
-    bulb.position.y = 0.9; group.add(bulb);
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.35, 20), new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.7, roughness: 0.2 }));
-    base.position.y = 0.25; group.add(base);
+    bulb.position.set(0, 0.9, 0); group.add(bulb);
+
+    // Metallic screw base with ridges
+    const baseBottom = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 0.08, 20), new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.7, roughness: 0.2 }));
+    baseBottom.position.set(0, 0.15, 0); group.add(baseBottom);
+    for (let i = 0; i < 4; i++) {
+      const ridge = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.03, 16), new THREE.MeshStandardMaterial({ color: 0xb0b0b0, metalness: 0.6, roughness: 0.3 }));
+      ridge.position.set(0, 0.25 + i * 0.035, 0); group.add(ridge);
+    }
+
+    // Light rays radiating outward
     for (let i = 0; i < 8; i++) {
       const ray = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.4, 0.04), new THREE.MeshStandardMaterial({ color: 0xfff5a0, emissive: 0xfff5a0, emissiveIntensity: 0.6, transparent: true, opacity: 0.65 }));
       const a = (i/8) * Math.PI * 2;
       ray.position.set(Math.cos(a) * 0.8, 0.9, Math.sin(a) * 0.8);
       group.add(ray);
     }
+
+    // WiFi indicator
+    const wifi = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), new THREE.MeshStandardMaterial({ color: 0x00b4d8, emissive: 0x00b4d8, emissiveIntensity: 0.5 }));
+    wifi.position.set(0.35, 1.1, 0); group.add(wifi);
+
+  } else if (deviceType === 'ground_robot') {
+    // Rectangular chassis
+    const chassis = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.35, 1.2), matDarkMetal);
+    chassis.position.set(0, 0.25, 0); group.add(chassis);
+
+    // 2 large drive wheels on each side
+    [[0.35, 0.2, -0.3],[0.35, 0.2, 0.3],[-0.35, 0.2, -0.3],[-0.35, 0.2, 0.3]].forEach(([wx, wy, wz]) => {
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.15, 16), matRubber);
+      wheel.rotation.z = Math.PI/2;
+      wheel.position.set(wx, wy, wz); group.add(wheel);
+    });
+
+    // Caster wheel at rear
+    const caster = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 12), matRubber);
+    caster.position.set(0, 0.08, 0.65); group.add(caster);
+
+    // Bumper at front
+    const bumper = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.06, 0.1), matAccent);
+    bumper.position.set(0, 0.35, -0.65); group.add(bumper);
+
+    // Sensor array on top
+    const lidarBase = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.25, 12), matDarkMetal);
+    lidarBase.position.set(-0.15, 0.5, 0); group.add(lidarBase);
+    const lidarCone = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.15, 12), matAccent);
+    lidarCone.position.set(-0.15, 0.7, 0); group.add(lidarCone);
+
+    // Camera
+    const camera = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.12), matDarkMetal);
+    camera.position.set(0, 0.5, -0.2); group.add(camera);
+
+    // Ultrasonic sensors on front
+    for (let i = -1; i <= 1; i += 2) {
+      const sensor = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.1, 8), matAccent);
+      sensor.rotation.x = Math.PI/2;
+      sensor.position.set(i * 0.15, 0.38, -0.5); group.add(sensor);
+    }
+
+    // Electronics bay lid on top
+    const lid = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.08, 1.15), new THREE.MeshStandardMaterial({ color: 0x4a5a70, metalness: 0.5, roughness: 0.4 }));
+    lid.position.set(0, 0.5, 0); group.add(lid);
+
+    // LED strip on front edge
+    const ledStrip = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.02, 0.05), new THREE.MeshStandardMaterial({ color: 0x00b4d8, emissive: 0x00b4d8, emissiveIntensity: 0.5 }));
+    ledStrip.position.set(0, 0.37, -0.6); group.add(ledStrip);
+
+  } else if (deviceType === 'humanoid') {
+    // Head
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), matDarkMetal);
+    head.position.set(0, 2.1, 0); group.add(head);
+
+    // Visor
+    const visor = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.08, 0.04), new THREE.MeshStandardMaterial({ color: 0x00b4d8, emissive: 0x00b4d8, emissiveIntensity: 0.3 }));
+    visor.position.set(0, 2.15, -0.2); group.add(visor);
+
+    // Neck
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.2, 10), matDarkMetal);
+    neck.position.set(0, 1.85, 0); group.add(neck);
+
+    // Torso upper
+    const torsoUpper = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.5, 0.25), matDarkMetal);
+    torsoUpper.position.set(0, 1.4, 0); group.add(torsoUpper);
+
+    // Torso lower (tapered)
+    const torsoLower = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.4, 0.22), matDarkMetal);
+    torsoLower.position.set(0, 0.9, 0); group.add(torsoLower);
+
+    // Chest plate accent
+    const chest = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.35, 0.03), new THREE.MeshStandardMaterial({ color: 0x00b4d8, emissive: 0x00b4d8, emissiveIntensity: 0.2 }));
+    chest.position.set(0, 1.4, -0.14); group.add(chest);
+
+    // Shoulders and arms
+    [[-0.25, 1.65, 0],[0.25, 1.65, 0]].forEach(([sx, sy, sz], idx) => {
+      const shoulder = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), matJoint);
+      shoulder.position.set(sx, sy, sz); group.add(shoulder);
+
+      const armDir = sx < 0 ? -1 : 1;
+      const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.07, 0.4, 10), matAccent);
+      upperArm.position.set(sx + armDir * 0.22, sy - 0.2, sz); group.add(upperArm);
+
+      const elbow = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 10), matJoint);
+      elbow.position.set(sx + armDir * 0.42, sy - 0.4, sz); group.add(elbow);
+
+      const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.35, 8), matAccent);
+      forearm.position.set(sx + armDir * 0.58, sy - 0.58, sz); group.add(forearm);
+
+      const hand = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.08), matDarkMetal);
+      hand.position.set(sx + armDir * 0.68, sy - 0.72, sz); group.add(hand);
+    });
+
+    // Hips and legs
+    [[-0.12, 0.5, 0],[0.12, 0.5, 0]].forEach(([hx, hy, hz], idx) => {
+      const hip = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 12), matJoint);
+      hip.position.set(hx, hy, hz); group.add(hip);
+
+      const upperLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.08, 0.45, 10), matAccent);
+      upperLeg.position.set(hx, hy - 0.25, hz); group.add(upperLeg);
+
+      const knee = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 10), matJoint);
+      knee.position.set(hx, hy - 0.5, hz); group.add(knee);
+
+      const lowerLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.45, 10), matAccent);
+      lowerLeg.position.set(hx, hy - 0.75, hz); group.add(lowerLeg);
+
+      const foot = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.2), matRubber);
+      foot.position.set(hx, hy - 1.02, hz); group.add(foot);
+    });
+
+  } else if (deviceType === 'hexapod') {
+    // Central body: oval shape
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.25, 16, 12), matDarkMetal);
+    body.scale.set(1.3, 0.7, 1.0);
+    group.add(body);
+
+    // 6 legs: 3 per side
+    const legConfigs = [
+      [-0.35, 0, -0.2], [-0.35, 0, 0], [-0.35, 0, 0.2],
+      [0.35, 0, -0.2], [0.35, 0, 0], [0.35, 0, 0.2]
+    ];
+
+    legConfigs.forEach(([bx, by, bz], idx) => {
+      const isLeft = bx < 0 ? 1 : -1;
+      // Coxa
+      const coxa = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.15, 8), matAccent);
+      coxa.rotation.z = Math.PI/2;
+      coxa.position.set(bx, by - 0.05, bz); group.add(coxa);
+
+      // Femur
+      const femur = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.25, 8), matAccent);
+      femur.rotation.z = -Math.PI/6;
+      femur.position.set(bx + isLeft * 0.15, by - 0.2, bz); group.add(femur);
+
+      // Tibia
+      const tibia = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.3, 8), matAccent);
+      tibia.rotation.z = -Math.PI/3.5;
+      tibia.position.set(bx + isLeft * 0.25, by - 0.45, bz); group.add(tibia);
+
+      // Foot
+      const foot = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 6), matRubber);
+      foot.position.set(bx + isLeft * 0.3, by - 0.65, bz); group.add(foot);
+    });
+
+    // Eyes/sensors on front
+    const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), new THREE.MeshStandardMaterial({ color: 0x00ff00, emissive: 0x00ff00, emissiveIntensity: 0.5 }));
+    eyeL.position.set(-0.1, 0.15, -0.35); group.add(eyeL);
+    const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), new THREE.MeshStandardMaterial({ color: 0x00ff00, emissive: 0x00ff00, emissiveIntensity: 0.5 }));
+    eyeR.position.set(0.1, 0.15, -0.35); group.add(eyeR);
+
+    // Antenna
+    for (let i = -1; i <= 1; i += 2) {
+      const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.35, 6), matAccent);
+      antenna.rotation.z = Math.PI/6;
+      antenna.position.set(i * 0.1, 0.35, -0.2); group.add(antenna);
+    }
+
+  } else if (deviceType === 'warehouse') {
+    // Flat rectangular platform
+    const platform = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.15, 0.8), matDarkMetal);
+    platform.position.set(0, 0.15, 0); group.add(platform);
+
+    // 4 guide wheels underneath
+    [[0.45, 0.05, -0.3],[0.45, 0.05, 0.3],[-0.45, 0.05, -0.3],[-0.45, 0.05, 0.3]].forEach(([wx, wy, wz]) => {
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.08, 12), matRubber);
+      wheel.rotation.z = Math.PI/2;
+      wheel.position.set(wx, wy, wz); group.add(wheel);
+    });
+
+    // Cargo platform on top
+    const cargo = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.12, 0.75), new THREE.MeshStandardMaterial({ color: 0x4a5a70, metalness: 0.4, roughness: 0.5 }));
+    cargo.position.set(0, 0.38, 0); group.add(cargo);
+
+    // Safety lights at corners (amber)
+    [[-0.55, 0.35, -0.35],[-0.55, 0.35, 0.35],[0.55, 0.35, -0.35],[0.55, 0.35, 0.35]].forEach(([lx, ly, lz]) => {
+      const light = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xffaa00, emissiveIntensity: 0.5 }));
+      light.position.set(lx, ly, lz); group.add(light);
+    });
+
+    // Guide sensor strip on bottom edge
+    const sensor = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.03, 0.05), new THREE.MeshStandardMaterial({ color: 0x00b4d8, emissive: 0x00b4d8, emissiveIntensity: 0.4 }));
+    sensor.position.set(0, 0.02, -0.42); group.add(sensor);
+
+    // Control panel on side
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.15, 0.08), new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.3, roughness: 0.6 }));
+    panel.position.set(0.65, 0.25, 0); group.add(panel);
+
+  } else if (deviceType === 'fixed_wing') {
+    // Fuselage: elongated cylinder
+    const fuselage = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1.2, 16), matDarkMetal);
+    fuselage.rotation.z = Math.PI/2;
+    group.add(fuselage);
+
+    // Main wings
+    const wingLeft = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.08, 0.2), matAccent);
+    wingLeft.position.set(-0.5, 0.1, 0); group.add(wingLeft);
+    const wingRight = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.08, 0.2), matAccent);
+    wingRight.position.set(0.5, 0.1, 0); group.add(wingRight);
+
+    // Vertical stabilizer
+    const vStab = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.35, 0.08), matAccent);
+    vStab.position.set(0, 0.2, -0.45); group.add(vStab);
+
+    // Horizontal stabilizer
+    const hStab = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.06, 0.08), matAccent);
+    hStab.position.set(0, 0, -0.5); group.add(hStab);
+
+    // Propeller: hub + blades
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.08, 12), matJoint);
+    hub.rotation.z = Math.PI/2;
+    hub.position.set(0, 0, 0.6); group.add(hub);
+
+    for (let i = 0; i < 2; i++) {
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 0.08), matAccent);
+      blade.rotation.y = (i * Math.PI);
+      blade.position.set(0, 0, 0.6);
+      blade.userData.isRotor = true;
+      group.add(blade);
+    }
+
+    // Landing gear: 3 thin cylinders
+    [[0, -0.15, 0.2],[-0.2, -0.15, -0.1],[0.2, -0.15, -0.1]].forEach(([gx, gy, gz]) => {
+      const gear = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.25, 6), matRubber);
+      gear.position.set(gx, gy, gz); group.add(gear);
+      const wheel = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), matRubber);
+      wheel.position.set(gx, gy - 0.15, gz); group.add(wheel);
+    });
+
+    // Cockpit/sensor dome on top front
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), new THREE.MeshStandardMaterial({ color: 0x87ceeb, transparent: true, opacity: 0.5, metalness: 0.2, roughness: 0.3 }));
+    dome.position.set(0, 0.2, 0.25); group.add(dome);
+
+  } else if (deviceType === 'gripper') {
+    // Mounting flange
+    const flange = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.15, 20), matDarkMetal);
+    flange.position.set(0, 0, 0); group.add(flange);
+
+    // Actuator body
+    const actuator = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.35, 0.18), matDarkMetal);
+    actuator.position.set(0, 0, -0.25); group.add(actuator);
+
+    // Two parallel jaw rails
+    const railL = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.4, 0.08), matAccent);
+    railL.position.set(-0.12, 0, -0.45); group.add(railL);
+    const railR = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.4, 0.08), matAccent);
+    railR.position.set(0.12, 0, -0.45); group.add(railR);
+
+    // Two gripper fingers (L-shaped from boxes)
+    const fingerL1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.25, 0.08), new THREE.MeshStandardMaterial({ color: 0x10b981, metalness: 0.3, roughness: 0.5 }));
+    fingerL1.position.set(-0.15, -0.05, -0.65); group.add(fingerL1);
+    const fingerL2 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.15, 0.08), new THREE.MeshStandardMaterial({ color: 0x10b981, metalness: 0.3, roughness: 0.5 }));
+    fingerL2.position.set(-0.18, -0.28, -0.75); group.add(fingerL2);
+
+    const fingerR1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.25, 0.08), new THREE.MeshStandardMaterial({ color: 0x10b981, metalness: 0.3, roughness: 0.5 }));
+    fingerR1.position.set(0.15, -0.05, -0.65); group.add(fingerR1);
+    const fingerR2 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.15, 0.08), new THREE.MeshStandardMaterial({ color: 0x10b981, metalness: 0.3, roughness: 0.5 }));
+    fingerR2.position.set(0.18, -0.28, -0.75); group.add(fingerR2);
+
+    // Rubber pads on finger tips
+    const padL = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.0, roughness: 0.9 }));
+    padL.position.set(-0.18, -0.35, -0.8); group.add(padL);
+    const padR = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.0, roughness: 0.9 }));
+    padR.position.set(0.18, -0.35, -0.8); group.add(padR);
+
+    // Force sensor indicators
+    const sensorL = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 6), new THREE.MeshStandardMaterial({ color: 0xff6b6b, emissive: 0xff6b6b, emissiveIntensity: 0.3 }));
+    sensorL.position.set(-0.2, 0.2, -0.5); group.add(sensorL);
+    const sensorR = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 6), new THREE.MeshStandardMaterial({ color: 0xff6b6b, emissive: 0xff6b6b, emissiveIntensity: 0.3 }));
+    sensorR.position.set(0.2, 0.2, -0.5); group.add(sensorR);
+
+  } else if (deviceType === 'quadruped') {
+    // Rectangular body (slightly arched)
+    const bodyLower = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.3, 1.0), matDarkMetal);
+    bodyLower.position.set(0, 0.35, 0); group.add(bodyLower);
+    const bodyUpper = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.25, 0.95), matDarkMetal);
+    bodyUpper.position.set(0, 0.48, 0); group.add(bodyUpper);
+
+    // Head/sensor unit on front
+    const headBox = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.3), matDarkMetal);
+    headBox.position.set(0, 0.45, -0.55); group.add(headBox);
+
+    // Camera lens
+    const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.05, 16), new THREE.MeshStandardMaterial({ color: 0x87ceeb, transparent: true, opacity: 0.6 }));
+    lens.rotation.z = Math.PI/2;
+    lens.position.set(0, 0.45, -0.72); group.add(lens);
+
+    // LIDAR ring
+    const lidar = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.02, 8, 32), matAccent);
+    lidar.rotation.x = Math.PI/2;
+    lidar.position.set(0, 0.6, -0.55); group.add(lidar);
+
+    // Battery indicator
+    const battery = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.06, 0.3), new THREE.MeshStandardMaterial({ color: 0x00b4d8, emissive: 0x00b4d8, emissiveIntensity: 0.3 }));
+    battery.position.set(0, 0.6, 0); group.add(battery);
+
+    // 4 legs positioned front and rear
+    const legPositions = [
+      [-0.22, 0.2, -0.3, 'front_left'],
+      [0.22, 0.2, -0.3, 'front_right'],
+      [-0.22, 0.2, 0.3, 'rear_left'],
+      [0.22, 0.2, 0.3, 'rear_right']
+    ];
+
+    legPositions.forEach(([lx, ly, lz]) => {
+      const hip = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 12), matJoint);
+      hip.position.set(lx, ly, lz); group.add(hip);
+
+      const upperLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.35, 10), matAccent);
+      upperLeg.position.set(lx, ly - 0.22, lz); group.add(upperLeg);
+
+      const knee = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 10), matJoint);
+      knee.position.set(lx, ly - 0.4, lz); group.add(knee);
+
+      const lowerLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.35, 10), matAccent);
+      lowerLeg.position.set(lx, ly - 0.58, lz); group.add(lowerLeg);
+
+      const footPad = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.05, 12), matRubber);
+      footPad.rotation.z = Math.PI/2;
+      footPad.position.set(lx, ly - 0.76, lz); group.add(footPad);
+    });
+
+  } else { // Fallback for unknown device types
+    const fallback = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), matDarkMetal);
+    group.add(fallback);
   }
+
   // Enable shadow casting on every mesh in the group
   group.traverse(o => {
     if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; }
