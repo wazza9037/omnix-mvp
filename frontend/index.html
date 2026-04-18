@@ -6422,6 +6422,10 @@ function renderOverviewRightPanel() {
       <div class="section-title">Quick Telemetry</div>
       ${teleHTML}
     </div>
+    <div class="rpanel-section" id="ota-firmware-panel">
+      <div class="section-title">Firmware</div>
+      <div id="ota-fw-info" style="font-size:11px;color:var(--text-muted)">Loading...</div>
+    </div>
     <div class="rpanel-section">
       <div class="section-title">Shortcuts</div>
       <div class="ctrl-grid">
@@ -6434,6 +6438,8 @@ function renderOverviewRightPanel() {
       </div>
     </div>
   `;
+  // Populate firmware panel after DOM is ready
+  renderOTAPanel(activeTabId);
 }
 
 function renderSimulateRightPanel() {
@@ -6850,6 +6856,291 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+// ─── OTA Firmware Updates ───
+
+let otaFirmwareList = [];
+let otaDeployStatus = {};  // device_id -> status
+let otaPollingInterval = null;
+
+async function fetchOTAFirmware() {
+  try {
+    const r = await fetch('/api/ota/firmware');
+    const d = await r.json();
+    otaFirmwareList = d.firmware || [];
+  } catch (e) {
+    console.warn('OTA firmware fetch failed:', e);
+  }
+}
+
+async function fetchOTADeployStatus(deviceId) {
+  try {
+    const r = await fetch(`/api/ota/deploy/${deviceId}/status`);
+    const d = await r.json();
+    otaDeployStatus[deviceId] = d;
+    return d;
+  } catch (e) { return null; }
+}
+
+async function uploadOTAFirmware(file, name, version, platform, description, compatibleDevices) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const b64 = reader.result.split(',')[1] || btoa(reader.result);
+      try {
+        const r = await fetch('/api/ota/firmware/upload', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            name, version, platform,
+            binary_b64: b64,
+            description: description || '',
+            compatible_devices: compatibleDevices || [],
+          }),
+        });
+        const d = await r.json();
+        if (d.ok) {
+          await fetchOTAFirmware();
+          resolve(d.firmware);
+        } else {
+          reject(d.error || 'Upload failed');
+        }
+      } catch (e) { reject(e); }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function deployOTAFirmware(deviceId, firmwareId) {
+  try {
+    const r = await fetch(`/api/ota/deploy/${deviceId}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({firmware_id: firmwareId}),
+    });
+    const d = await r.json();
+    if (d.ok) {
+      startOTAPolling(deviceId);
+      renderOTAPanel(deviceId);
+    } else {
+      alert('Deploy failed: ' + (d.error || 'unknown'));
+    }
+  } catch (e) { alert('Deploy error: ' + e); }
+}
+
+async function rollbackOTA(deviceId) {
+  try {
+    const r = await fetch(`/api/ota/rollback/${deviceId}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: '{}',
+    });
+    const d = await r.json();
+    if (d.ok) {
+      startOTAPolling(deviceId);
+      renderOTAPanel(deviceId);
+    } else {
+      alert('Rollback failed: ' + (d.error || 'unknown'));
+    }
+  } catch (e) { alert('Rollback error: ' + e); }
+}
+
+async function deleteOTAFirmware(fwId) {
+  if (!confirm('Delete this firmware version?')) return;
+  try {
+    const r = await fetch(`/api/ota/firmware/${fwId}`, {method: 'DELETE'});
+    const d = await r.json();
+    if (d.ok) {
+      await fetchOTAFirmware();
+      renderOTAPanel(activeTabId);
+    }
+  } catch (e) { console.error(e); }
+}
+
+function startOTAPolling(deviceId) {
+  if (otaPollingInterval) clearInterval(otaPollingInterval);
+  otaPollingInterval = setInterval(async () => {
+    const s = await fetchOTADeployStatus(deviceId);
+    if (s && (s.status === 'complete' || s.status === 'failed' || s.status === 'none')) {
+      clearInterval(otaPollingInterval);
+      otaPollingInterval = null;
+    }
+    renderOTAPanel(deviceId);
+  }, 1000);
+}
+
+function showFirmwareUploadModal() {
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `
+    <div style="background:var(--navy);border:1px solid var(--card-border);border-radius:12px;padding:24px;width:420px;max-width:90vw">
+      <h3 style="margin:0 0 16px;font-size:16px">Upload Firmware</h3>
+      <div style="display:grid;gap:10px">
+        <input id="fw-name" placeholder="Firmware name" style="padding:8px;background:var(--bg);border:1px solid var(--card-border);border-radius:6px;color:var(--text)">
+        <input id="fw-version" placeholder="Version (e.g. 1.2.0)" style="padding:8px;background:var(--bg);border:1px solid var(--card-border);border-radius:6px;color:var(--text)">
+        <select id="fw-platform" style="padding:8px;background:var(--bg);border:1px solid var(--card-border);border-radius:6px;color:var(--text)">
+          <option value="esp32">ESP32</option>
+          <option value="esp8266">ESP8266</option>
+          <option value="arduino_uno">Arduino Uno</option>
+          <option value="arduino_mega">Arduino Mega</option>
+          <option value="rp2040">RP2040 (Pico)</option>
+        </select>
+        <textarea id="fw-desc" placeholder="Description (optional)" rows="2" style="padding:8px;background:var(--bg);border:1px solid var(--card-border);border-radius:6px;color:var(--text);resize:vertical"></textarea>
+        <div id="fw-drop-zone" style="border:2px dashed var(--card-border);border-radius:8px;padding:24px;text-align:center;cursor:pointer;color:var(--text-muted);font-size:12px;transition:border-color 0.2s"
+             onclick="document.getElementById('fw-file-input').click()">
+          Drop firmware binary here or click to browse
+          <br><span style="font-size:10px;opacity:0.7">.bin, .hex, .ino</span>
+        </div>
+        <input id="fw-file-input" type="file" accept=".bin,.hex,.ino,.elf" style="display:none">
+        <div id="fw-file-name" style="font-size:11px;color:var(--teal);display:none"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+        <button class="btn" onclick="this.closest('div[style]').remove()" style="border-color:var(--text-muted)">Cancel</button>
+        <button class="btn" id="fw-upload-btn" onclick="doFirmwareUpload(this.closest('div[style]'))" style="border-color:var(--teal);color:var(--teal)">Upload</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  // Drag-and-drop
+  const dz = modal.querySelector('#fw-drop-zone');
+  const fi = modal.querySelector('#fw-file-input');
+  const fn = modal.querySelector('#fw-file-name');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.borderColor = 'var(--teal)'; });
+  dz.addEventListener('dragleave', () => { dz.style.borderColor = 'var(--card-border)'; });
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.style.borderColor = 'var(--card-border)';
+    if (e.dataTransfer.files.length) {
+      fi.files = e.dataTransfer.files;
+      fn.textContent = e.dataTransfer.files[0].name;
+      fn.style.display = 'block';
+    }
+  });
+  fi.addEventListener('change', () => {
+    if (fi.files.length) {
+      fn.textContent = fi.files[0].name;
+      fn.style.display = 'block';
+    }
+  });
+}
+
+async function doFirmwareUpload(modal) {
+  const name = modal.querySelector('#fw-name').value.trim();
+  const version = modal.querySelector('#fw-version').value.trim();
+  const platform = modal.querySelector('#fw-platform').value;
+  const desc = modal.querySelector('#fw-desc').value;
+  const file = modal.querySelector('#fw-file-input').files[0];
+
+  if (!name || !version || !file) {
+    alert('Name, version, and file are required');
+    return;
+  }
+
+  const btn = modal.querySelector('#fw-upload-btn');
+  btn.textContent = 'Uploading...';
+  btn.disabled = true;
+
+  try {
+    await uploadOTAFirmware(file, name, version, platform, desc, []);
+    modal.remove();
+    renderOTAPanel(activeTabId);
+  } catch (e) {
+    alert('Upload failed: ' + e);
+    btn.textContent = 'Upload';
+    btn.disabled = false;
+  }
+}
+
+async function renderOTAPanel(deviceId) {
+  const panel = document.getElementById('ota-fw-info');
+  if (!panel) return;
+
+  await fetchOTAFirmware();
+
+  // Get device telemetry for firmware version
+  const dev = simDevices[deviceId];
+  const tele = dev?.telemetry || {};
+  const fwVer = tele.fw_version || tele.firmware_version || '—';
+  const otaStat = tele.ota_status || 'idle';
+  const otaProg = tele.ota_progress || 0;
+  const platform = tele.platform || '';
+
+  // Get deploy status
+  const deployStatus = otaDeployStatus[deviceId];
+  const isDeploying = deployStatus && !['complete', 'failed', 'none'].includes(deployStatus.status);
+
+  // Progress bar HTML
+  let progressHTML = '';
+  if (isDeploying) {
+    const pct = deployStatus.progress || 0;
+    const statusText = deployStatus.status || '';
+    progressHTML = `
+      <div style="margin:8px 0">
+        <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:4px">
+          <span style="color:var(--teal);text-transform:uppercase;letter-spacing:0.5px">${escapeHtml(statusText)}</span>
+          <span>${pct}%</span>
+        </div>
+        <div style="height:6px;background:var(--bg);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:var(--teal);border-radius:3px;transition:width 0.3s"></div>
+        </div>
+      </div>
+    `;
+  } else if (deployStatus && deployStatus.status === 'complete') {
+    progressHTML = `<div style="font-size:11px;color:#4ade80;margin:6px 0">Update complete</div>`;
+  } else if (deployStatus && deployStatus.status === 'failed') {
+    progressHTML = `<div style="font-size:11px;color:#f87171;margin:6px 0">Failed: ${escapeHtml(deployStatus.error || 'unknown')}</div>`;
+  }
+
+  // Firmware list
+  const fwListHTML = otaFirmwareList.slice(0, 6).map(fw => {
+    const isSource = fw.type === 'source';
+    const sizeStr = isSource ? 'source' : (fw.file_size > 1024 ? (fw.file_size / 1024).toFixed(1) + ' KB' : fw.file_size + ' B');
+    return `
+      <div style="padding:6px 8px;background:var(--bg);border-radius:6px;margin-bottom:4px;font-size:11px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <span style="font-weight:600">${escapeHtml(fw.name)}</span>
+            <span style="color:var(--text-muted);margin-left:4px">v${escapeHtml(fw.version)}</span>
+          </div>
+          <span style="font-size:9px;padding:2px 6px;border-radius:3px;background:var(--card-border);color:var(--text-muted)">${escapeHtml(fw.platform)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;align-items:center">
+          <span style="font-size:10px;color:var(--text-muted)">${sizeStr}</span>
+          <div style="display:flex;gap:4px">
+            ${!isSource ? `<button class="icon-btn" style="font-size:10px;padding:2px 6px;border:1px solid var(--teal);border-radius:4px;color:var(--teal);cursor:pointer"
+                    onclick="deployOTAFirmware('${deviceId}','${fw.id}')">Deploy</button>` : ''}
+            <button class="icon-btn" style="font-size:10px;padding:2px 6px;border:1px solid var(--card-border);border-radius:4px;color:var(--text-muted);cursor:pointer"
+                    onclick="deleteOTAFirmware('${fw.id}')">Del</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('') || '<div style="font-size:11px;color:var(--text-muted)">No firmware uploaded.</div>';
+
+  // Rollback button
+  const rollbackHTML = (deployStatus && deployStatus.previous_firmware_version && deployStatus.status !== 'none')
+    ? `<button class="btn full" onclick="rollbackOTA('${deviceId}')" style="border-color:#f59e0b;color:#f59e0b;font-size:11px;margin-top:4px">Rollback to Previous</button>`
+    : '';
+
+  panel.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div>
+        <div style="font-size:12px">Current: <span style="font-family:monospace;color:var(--teal)">${escapeHtml(fwVer)}</span></div>
+        ${platform ? `<div style="font-size:10px;color:var(--text-muted)">Platform: ${escapeHtml(platform)}</div>` : ''}
+      </div>
+      <button class="icon-btn" style="font-size:10px;padding:3px 8px;border:1px solid var(--teal);border-radius:4px;color:var(--teal);cursor:pointer"
+              onclick="fetchOTAFirmware().then(()=>renderOTAPanel('${deviceId}'))">Check</button>
+    </div>
+    ${progressHTML}
+    <div style="margin:10px 0 6px;font-size:10px;letter-spacing:0.5px;color:var(--text-muted);text-transform:uppercase">Available Firmware</div>
+    ${fwListHTML}
+    <div style="margin-top:8px;display:flex;gap:6px">
+      <button class="btn full" onclick="showFirmwareUploadModal()" style="font-size:11px">Upload New</button>
+      ${rollbackHTML}
+    </div>
+  `;
+}
+
 // ─── Bootstrap ───
 
 async function bootstrap() {
@@ -6862,7 +7153,7 @@ async function bootstrap() {
     return;
   }
   connected = true;
-  await Promise.all([fetchVpe(), fetchConnectorClasses(), fetchConnectorInstances(), fetchPlugins()]);
+  await Promise.all([fetchVpe(), fetchConnectorClasses(), fetchConnectorInstances(), fetchPlugins(), fetchOTAFirmware()]);
 
   // Fetch scenarios, templates, and part types once at boot
   await Promise.all([

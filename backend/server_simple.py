@@ -210,6 +210,9 @@ from omnix.sensors import SensorRegistry, AlertManager, SensorSimulator
 from omnix.sensors.alerts import AlertRule
 from omnix.sensors.simulator import auto_register_sensors
 
+# Import OTA Firmware Update system
+from omnix.ota import OTAManager, OTADeployer, FirmwareBuilder
+
 # Marketplace store — session-scoped, seeded on first access
 marketplace_store = MarketplaceStore()
 marketplace_installer = Installer(marketplace_store)
@@ -225,6 +228,14 @@ _frame_processor = FrameProcessor()
 sensor_registry = SensorRegistry()
 alert_manager = AlertManager()
 sensor_simulator = SensorSimulator(sensor_registry)
+
+# OTA Firmware Update system — session-scoped
+ota_manager = OTAManager()
+ota_deployer = OTADeployer(ota_manager)
+firmware_builder = FirmwareBuilder()
+
+# Preload existing sketches as available firmware
+ota_manager.preload_existing_sketches()
 
 # WebSocket server (initialized in main() if enabled)
 ws_server = None
@@ -1124,6 +1135,75 @@ class OmnixHandler(SimpleHTTPRequestHandler):
             else:
                 self._json_response({"error": "No frame available"}, 503)
 
+        # ── OTA Firmware Endpoints (GET) ──
+
+        elif parsed.path == "/api/ota/firmware":
+            # List all firmware
+            firmware_list = ota_manager.list_firmware()
+            self._json_response({"firmware": firmware_list})
+
+        elif parsed.path.startswith("/api/ota/firmware/check"):
+            # ESP32 update check: /api/ota/firmware/check?platform=esp32&current_version=1.0.0
+            qs = parse_qs(parsed.query)
+            platform = qs.get("platform", [""])[0]
+            current_version = qs.get("current_version", [""])[0]
+            if not platform:
+                self._json_response({"update_available": False, "error": "platform required"})
+                return
+            all_fw = ota_manager.list_firmware()
+            # Find newest firmware for this platform that's newer than current
+            for fw in all_fw:
+                if fw.get("platform") == platform and fw.get("type") != "source":
+                    if fw.get("version", "") != current_version:
+                        self._json_response({
+                            "update_available": True,
+                            "firmware_id": fw["id"],
+                            "version": fw["version"],
+                            "download_url": f"/api/ota/firmware/{fw['id']}/download",
+                            "checksum": fw.get("checksum", ""),
+                            "file_size": fw.get("file_size", 0),
+                        })
+                        return
+            self._json_response({"update_available": False})
+
+        elif parsed.path.startswith("/api/ota/firmware/") and parsed.path.endswith("/download"):
+            # Download firmware binary: /api/ota/firmware/<id>/download
+            parts = parsed.path.split("/")
+            fw_id = parts[4] if len(parts) >= 6 else ""
+            binary = ota_manager.get_firmware_binary(fw_id)
+            if binary:
+                self.send_response(200)
+                self.send_header("Content-Type", "application/octet-stream")
+                self.send_header("Content-Length", len(binary))
+                self.send_header("Content-Disposition", f'attachment; filename="{fw_id}.bin"')
+                cors_middleware.apply_headers(self)
+                secure_headers.apply(self)
+                self.end_headers()
+                self.wfile.write(binary)
+            else:
+                meta = ota_manager.get_firmware(fw_id)
+                if meta and meta.get("type") == "source":
+                    self._json_response({"error": "Source firmware cannot be downloaded as binary. Compile first."}, 400)
+                else:
+                    self._json_response({"error": "Firmware not found"}, 404)
+
+        elif parsed.path.startswith("/api/ota/deploy/") and parsed.path.endswith("/status"):
+            # Get deployment status: /api/ota/deploy/<device_id>/status
+            parts = parsed.path.split("/")
+            device_id = parts[4] if len(parts) >= 6 else ""
+            status = ota_deployer.get_status(device_id)
+            if status:
+                self._json_response(status)
+            else:
+                self._json_response({"status": "none", "device_id": device_id})
+
+        elif parsed.path == "/api/ota/builder/status":
+            # Check if arduino-cli is available
+            self._json_response({
+                "available": firmware_builder.is_available(),
+                "boards": firmware_builder.list_boards() if firmware_builder.is_available() else [],
+            })
+
         else:
             # Auto-redirect mobile user-agents to mobile PWA from root
             if parsed.path == "/" and self._is_mobile_ua():
@@ -1558,6 +1638,143 @@ class OmnixHandler(SimpleHTTPRequestHandler):
                 self._json_response({"success": True})
             else:
                 self._json_response({"error": "Unknown agent"}, 404)
+
+        # ── OTA Firmware Endpoints (POST) ──
+
+        elif parsed.path == "/api/ota/firmware/upload":
+            # Upload firmware binary — accepts JSON with base64-encoded binary
+            # {name, version, platform, binary_b64, description?, compatible_devices?}
+            import base64
+            name = data.get("name", "").strip()
+            version = data.get("version", "").strip()
+            platform = data.get("platform", "").strip()
+            binary_b64 = data.get("binary_b64", "")
+            description = data.get("description", "")
+            compatible_devices = data.get("compatible_devices", [])
+
+            if not name or not version or not platform:
+                self._json_response(
+                    {"error": "name, version, and platform are required"}, 400)
+                return
+            if not binary_b64:
+                self._json_response(
+                    {"error": "binary_b64 (base64-encoded firmware binary) is required"}, 400)
+                return
+
+            try:
+                binary_data = base64.b64decode(binary_b64)
+            except Exception:
+                self._json_response({"error": "Invalid base64 data"}, 400)
+                return
+
+            try:
+                result = ota_manager.upload_firmware(
+                    name=name, version=version, platform=platform,
+                    binary_data=binary_data, description=description,
+                    compatible_devices=compatible_devices,
+                )
+                self._json_response({"ok": True, "firmware": result}, 201)
+            except ValueError as e:
+                self._json_response({"error": str(e)}, 400)
+
+        elif parsed.path.startswith("/api/ota/deploy/") and parsed.path.endswith("/progress"):
+            # ESP32 reports deployment progress: /api/ota/deploy/<device_id>/progress
+            parts = parsed.path.split("/")
+            device_id = parts[4] if len(parts) >= 6 else ""
+            status = data.get("status", "")
+            progress = data.get("progress_pct", 0)
+            error = data.get("error", "")
+            if device_id:
+                ota_deployer._update_state(device_id, status=status, progress=progress, error=error or None)
+                self._json_response({"ok": True})
+            else:
+                self._json_response({"error": "device_id required"}, 400)
+
+        elif parsed.path.startswith("/api/ota/deploy/"):
+            # Start deployment: POST /api/ota/deploy/<device_id>
+            parts = parsed.path.split("/")
+            device_id = parts[4] if len(parts) >= 5 else ""
+            firmware_id = data.get("firmware_id", "")
+            if not device_id or not firmware_id:
+                self._json_response(
+                    {"error": "device_id (in URL) and firmware_id (in body) required"}, 400)
+                return
+
+            # Get device info for platform detection
+            dev = devices.get(device_id)
+            device_info = {}
+            if dev:
+                tele = dev.get_telemetry()
+                device_info = {
+                    "platform": tele.get("platform", dev.device_type),
+                    "current_version": tele.get("fw_version", "unknown"),
+                }
+
+            try:
+                result = ota_deployer.deploy(device_id, firmware_id, device_info)
+                # For ESP32 devices, queue the OTA command
+                for aid, info in _ESP32_AGENTS.items():
+                    if info.get("device_id") == device_id or aid == device_id:
+                        fw = ota_manager.get_firmware(firmware_id)
+                        _ESP32_COMMAND_QUEUES.setdefault(aid, []).append({
+                            "id": uuid.uuid4().hex[:8],
+                            "command": "ota_update",
+                            "params": {
+                                "firmware_id": firmware_id,
+                                "download_url": f"/api/ota/firmware/{firmware_id}/download",
+                                "version": fw.get("version", "") if fw else "",
+                                "checksum": fw.get("checksum", "") if fw else "",
+                            },
+                            "ts": time.time(),
+                        })
+                        break
+
+                self._json_response({"ok": True, "deployment": result})
+            except ValueError as e:
+                self._json_response({"error": str(e)}, 400)
+
+        elif parsed.path.startswith("/api/ota/rollback/"):
+            # Rollback: POST /api/ota/rollback/<device_id>
+            parts = parsed.path.split("/")
+            device_id = parts[4] if len(parts) >= 5 else ""
+            if not device_id:
+                self._json_response({"error": "device_id required"}, 400)
+                return
+            try:
+                result = ota_deployer.rollback(device_id)
+                self._json_response({"ok": True, "deployment": result})
+            except ValueError as e:
+                self._json_response({"error": str(e)}, 400)
+
+        elif parsed.path.startswith("/api/ota/firmware/") and not parsed.path.endswith("/download"):
+            # DELETE firmware: handled as POST /api/ota/firmware/<id>/delete
+            parts = parsed.path.split("/")
+            fw_id = parts[4] if len(parts) >= 5 else ""
+            if parsed.path.endswith("/delete"):
+                fw_id = parts[4] if len(parts) >= 6 else ""
+                if ota_manager.delete_firmware(fw_id):
+                    self._json_response({"ok": True})
+                else:
+                    self._json_response({"error": "Firmware not found"}, 404)
+            elif parsed.path.endswith("/compile"):
+                # Compile source firmware: POST /api/ota/firmware/<id>/compile
+                fw_id = parts[4] if len(parts) >= 6 else ""
+                fw = ota_manager.get_firmware(fw_id)
+                if not fw:
+                    self._json_response({"error": "Firmware not found"}, 404)
+                    return
+                if not firmware_builder.is_available():
+                    self._json_response({"error": "arduino-cli not installed"}, 503)
+                    return
+                sketch_path = fw.get("sketch_path", "")
+                board_fqbn = data.get("board_fqbn", "esp32:esp32:esp32")
+                if sketch_path:
+                    result = firmware_builder.compile(sketch_path, board_fqbn)
+                    self._json_response(result)
+                else:
+                    self._json_response({"error": "No sketch path for this firmware"}, 400)
+            else:
+                self._json_response({"error": "Unknown OTA firmware action"}, 400)
 
         # ── Workspace Endpoints (POST) ──
 
@@ -2366,6 +2583,26 @@ class OmnixHandler(SimpleHTTPRequestHandler):
         secure_headers.apply(self)
         self.end_headers()
         self.wfile.write(body)
+
+    def do_DELETE(self):
+        self._dispatch(self._do_delete)
+
+    def _do_delete(self):
+        parsed = urlparse(self.path)
+
+        # DELETE /api/ota/firmware/<id> — remove a firmware version
+        if parsed.path.startswith("/api/ota/firmware/"):
+            parts = parsed.path.split("/")
+            fw_id = parts[4] if len(parts) >= 5 else ""
+            if not fw_id:
+                self._json_response({"error": "firmware_id required"}, 400)
+                return
+            if ota_manager.delete_firmware(fw_id):
+                self._json_response({"ok": True})
+            else:
+                self._json_response({"error": "Firmware not found"}, 404)
+        else:
+            self._json_response({"error": "Not found"}, 404)
 
     def do_OPTIONS(self):
         """Handle CORS preflight requests."""

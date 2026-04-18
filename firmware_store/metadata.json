@@ -1,0 +1,47 @@
+{
+  "src_esp32_omnix": {
+    "id": "src_esp32_omnix",
+    "name": "OMNIX Esp32 Source",
+    "version": "source",
+    "platform": "esp32",
+    "file_size": 10062,
+    "checksum": "2d739d1b69644368477a0b6c31c1e06866cbc367ea4a83c09e7a473e3a3f2912",
+    "upload_date": "2026-04-18T19:29:47.482740Z",
+    "description": "Arduino sketch source (not compiled binary)",
+    "compatible_devices": [
+      "all"
+    ],
+    "type": "source",
+    "sketch_path": "connectors/firmware/esp32_omnix.ino"
+  },
+  "src_esp32_omnix_": {
+    "id": "src_esp32_omnix_",
+    "name": "OMNIX Esp32 Source",
+    "version": "source",
+    "platform": "esp32",
+    "file_size": 18527,
+    "checksum": "117577f3f4ead96595527a36062303cd3857263bc451d7c635edfdc8438271aa",
+    "upload_date": "2026-04-18T19:29:47.484101Z",
+    "description": "Arduino sketch source (not compiled binary)",
+    "compatible_devices": [
+      "all"
+    ],
+    "type": "source",
+    "sketch_path": "connectors/firmware/esp32_omnix_ota.ino"
+  },
+  "src_arduino_omni": {
+    "id": "src_arduino_omni",
+    "name": "OMNIX Arduino_Uno Source",
+    "version": "source",
+    "platform": "arduino_uno",
+    "file_size": 8464,
+    "checksum": "1a8decfa9cb27eeeb8c97c7a8136f39d9a9364f57107355a1c40ef033740cded",
+    "upload_date": "2026-04-18T19:29:47.485392Z",
+    "description": "Arduino sketch source (not compiled binary)",
+    "compatible_devices": [
+      "all"
+    ],
+    "type": "source",
+    "sketch_path": "connectors/firmware/arduino_omnix.ino"
+  }
+}

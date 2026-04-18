@@ -51,6 +51,10 @@ class _SimEsp32:
     def __init__(self, board_type: str):
         self.board_type = board_type
         self.boot_ts = time.time()
+        self.fw_version = "1.0.0"
+        self.fw_version_code = 1
+        self.ota_status = "idle"     # idle | checking | downloading | flashing | rebooting | error
+        self.ota_progress = 0
         self.state = {
             "rssi_dbm": -52,          # Wi-Fi signal
             "heap_free_kb": 180,
@@ -94,10 +98,35 @@ class _SimEsp32:
             return {"success": True, "message": "sample",
                     "data": {"temp": self.state["temp_sensor_c"],
                              "humidity": self.state["humidity"]}}
+        if cmd == "ota_update":
+            # Simulate OTA update process
+            self.ota_status = "downloading"
+            self.ota_progress = 0
+            self._ota_start_ts = time.time()
+            return {"success": True, "message": "OTA update started"}
+        if cmd == "get_firmware_version":
+            return {"success": True, "message": self.fw_version,
+                    "data": {"fw_version": self.fw_version, "fw_version_code": self.fw_version_code}}
         return {"success": False, "message": f"unknown command {cmd}"}
 
     def tick(self):
         self.state["uptime_s"] = int(time.time() - self.boot_ts)
+        # Simulate OTA progress
+        if self.ota_status == "downloading":
+            elapsed = time.time() - getattr(self, "_ota_start_ts", time.time())
+            self.ota_progress = min(60, int(elapsed * 20))
+            if self.ota_progress >= 60:
+                self.ota_status = "flashing"
+        elif self.ota_status == "flashing":
+            self.ota_progress = min(90, self.ota_progress + 5)
+            if self.ota_progress >= 90:
+                self.ota_status = "rebooting"
+        elif self.ota_status == "rebooting":
+            self.ota_progress = 100
+            self.fw_version = "1.1.0"
+            self.fw_version_code = 2
+            self.ota_status = "idle"
+            self.ota_progress = 0
         self.state["temp_c"] = 34 + math.sin(time.time() / 6) * 1.5
         # Wi-Fi RSSI drifts
         self.state["rssi_dbm"] = max(-85, min(-35, self.state["rssi_dbm"] + random.randint(-2, 2)))
@@ -113,6 +142,11 @@ class _SimEsp32:
         out = dict(self.state)
         out["_ts"] = time.time()
         out["simulated"] = True
+        out["fw_version"] = self.fw_version
+        out["fw_version_code"] = self.fw_version_code
+        out["ota_status"] = self.ota_status
+        out["ota_progress"] = self.ota_progress
+        out["platform"] = "esp32"
         return out
 
 
@@ -265,6 +299,19 @@ class Esp32WifiConnector(SimulatedBackendMixin, ConnectorBase):
         return {"success": True, "message": f"Queued '{cmd}' for ESP32"}
 
     def _capabilities_for(self, board: str):
+        # OTA capability is shared across all board types
+        ota_cap = DeviceCapability(
+            name="ota_update", description="OTA firmware update",
+            parameters={
+                "firmware_id": {"type": "text", "help": "Firmware ID to deploy"},
+            },
+            category="firmware",
+        )
+        fw_version_cap = DeviceCapability(
+            name="get_firmware_version", description="Get current firmware version",
+            parameters={}, category="firmware",
+        )
+
         if board == "lights":
             return [
                 DeviceCapability(name="toggle", description="Power on/off",
@@ -276,6 +323,7 @@ class Esp32WifiConnector(SimulatedBackendMixin, ConnectorBase):
                 DeviceCapability(name="set_brightness", description="Brightness 0-100",
                     parameters={"brightness": {"type": "number", "min": 0, "max": 100, "default": 70}},
                     category="brightness"),
+                ota_cap, fw_version_cap,
             ]
         if board == "rover":
             return [
@@ -285,10 +333,12 @@ class Esp32WifiConnector(SimulatedBackendMixin, ConnectorBase):
                         "speed": {"type": "number", "min": 0, "max": 255, "default": 150},
                     }, category="movement"),
                 DeviceCapability(name="emergency_stop", description="Stop motors", parameters={}, category="safety"),
+                ota_cap, fw_version_cap,
             ]
         if board == "sensor":
             return [
                 DeviceCapability(name="sample", description="Capture a reading",
                     parameters={}, category="sensors"),
+                ota_cap, fw_version_cap,
             ]
-        return []
+        return [ota_cap, fw_version_cap]
