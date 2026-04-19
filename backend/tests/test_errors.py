@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
 from omnix.errors import (
     OmnixError, ValidationError, NotFoundError, ConflictError,
     UpstreamError, error_response,

@@ -80,12 +80,21 @@ def _init_database():
 
 
 # ── Wikipedia lookup helper (free, no API key required) ──
-_WIKI_CACHE = {}  # query → result
+_WIKI_CACHE = {}  # query → result (bounded LRU-like cache)
+_WIKI_CACHE_MAX_SIZE = 100  # Limit cache size to prevent memory leak
+
+def _evict_wiki_cache_if_needed():
+    """Evict oldest entries if cache grows too large (simple FIFO strategy)."""
+    if len(_WIKI_CACHE) > _WIKI_CACHE_MAX_SIZE:
+        # Remove first ~20% of entries to amortize eviction cost
+        to_remove = list(_WIKI_CACHE.keys())[:_WIKI_CACHE_MAX_SIZE // 5]
+        for k in to_remove:
+            del _WIKI_CACHE[k]
 
 def _wikipedia_lookup(query: str) -> dict:
     """Look up a term on Wikipedia's REST summary endpoint.
     Returns {found, title, description, extract, thumbnail, url} or {found: False}.
-    Cached in-memory for this session.
+    Cached in-memory for this session (max 100 entries to prevent memory leak).
     """
     key = query.lower().strip()
     if key in _WIKI_CACHE:
@@ -103,6 +112,7 @@ def _wikipedia_lookup(query: str) -> dict:
         if not titles:
             result = {"found": False, "query": query}
             _WIKI_CACHE[key] = result
+            _evict_wiki_cache_if_needed()
             return result
         title = titles[0]
     except Exception as e:
@@ -127,10 +137,12 @@ def _wikipedia_lookup(query: str) -> dict:
             "url": (sdata.get("content_urls") or {}).get("desktop", {}).get("page", ""),
         }
         _WIKI_CACHE[key] = result
+        _evict_wiki_cache_if_needed()
         return result
     except Exception as e:
         result = {"found": False, "error": str(e), "query": query}
         _WIKI_CACHE[key] = result
+        _evict_wiki_cache_if_needed()
         return result
 
 # Import simulated devices
@@ -216,6 +228,9 @@ from omnix.ota import OTAManager, OTADeployer, FirmwareBuilder
 # Import Swarm Coordination
 from omnix.swarm import SwarmCoordinator, FORMATIONS, MISSION_TEMPLATES
 
+# Import AI Enhancement module
+from omnix.ai import ModelRegistry, AIInferenceEngine, RobotKnowledgeBase, RobotEnhancer
+
 # Marketplace store — session-scoped, seeded on first access
 marketplace_store = MarketplaceStore()
 marketplace_installer = Installer(marketplace_store)
@@ -243,15 +258,33 @@ ota_manager.preload_existing_sketches()
 # Swarm Coordinator — session-scoped
 swarm_coordinator = SwarmCoordinator()
 
+# AI Enhancement module — session-scoped
+ai_model_registry = ModelRegistry()
+ai_inference_engine = AIInferenceEngine(ai_model_registry)
+ai_knowledge_base = RobotKnowledgeBase()
+ai_enhancer = RobotEnhancer(ai_model_registry, ai_inference_engine, ai_knowledge_base)
+
 # WebSocket server (initialized in main() if enabled)
 ws_server = None
 
 # Per-device command history for the command-bar up-arrow recall
 _nlp_history: dict[str, list[str]] = {}
+_NLP_HISTORY_DEVICE_LIMIT = 30  # Max entries per device
+_NLP_HISTORY_MAX_DEVICES = 50   # Cleanup if tracking >50 devices (dead devices) to prevent leaks
 
-def _push_history(device_id: str, text: str, limit: int = 30) -> None:
+def _cleanup_nlp_history_if_needed() -> None:
+    """Remove history for deleted devices if tracking too many."""
+    if len(_nlp_history) > _NLP_HISTORY_MAX_DEVICES:
+        # Prune history for devices that no longer exist
+        to_delete = [did for did in _nlp_history if did not in devices]
+        for did in to_delete:
+            del _nlp_history[did]
+
+def _push_history(device_id: str, text: str, limit: int = None) -> None:
     if not text.strip():
         return
+    if limit is None:
+        limit = _NLP_HISTORY_DEVICE_LIMIT
     h = _nlp_history.setdefault(device_id, [])
     # De-dupe — if the last entry is the same, skip
     if h and h[-1] == text:
@@ -259,6 +292,7 @@ def _push_history(device_id: str, text: str, limit: int = 30) -> None:
     h.append(text)
     if len(h) > limit:
         del h[0:len(h) - limit]
+    _cleanup_nlp_history_if_needed()
 
 # Shared ESP32 registries (module-level in esp32_wifi so the connector and
 # the HTTP handlers agree on state)
@@ -299,7 +333,6 @@ pi_command_results = {}
 
 # Global device registry (simulated devices)
 devices = {}
-sse_clients = []
 
 
 def add_device(device):
@@ -461,8 +494,17 @@ class OmnixHandler(SimpleHTTPRequestHandler):
             })
 
         elif parsed.path == "/api/telemetry":
+            # Performance: support ?device_ids=id1,id2,... to fetch only specific devices
+            qs = parse_qs(parsed.query)
+            requested_ids = None
+            if "device_ids" in qs:
+                requested_ids = set(qs["device_ids"][0].split(","))
+
             telemetry = {}
             for did, d in devices.items():
+                # Skip if specific device list was requested and this device isn't in it
+                if requested_ids is not None and did not in requested_ids:
+                    continue
                 t = d.get_telemetry()
                 telemetry[did] = t
                 # Feed the workspace's rolling window if one exists
@@ -1234,6 +1276,31 @@ class OmnixHandler(SimpleHTTPRequestHandler):
                 self._json_response({"ok": True, "mission": m})
             else:
                 self._json_response({"ok": False, "error": "mission not found"}, status=404)
+
+        # ── AI Enhancement GET routes ────────────────────────
+        elif parsed.path == "/api/ai/models":
+            models = ai_model_registry.list_models()
+            self._json_response({
+                "models": [m.to_dict() for m in models],
+                "total": len(models),
+            })
+            return
+
+        elif parsed.path.startswith("/api/ai/knowledge/"):
+            device_id = parsed.path.split("/api/ai/knowledge/")[1]
+            if device_id not in devices:
+                raise NotFoundError(f"Device {device_id} not found")
+            knowledge = ai_knowledge_base.get_knowledge(device_id)
+            self._json_response(knowledge.to_dict() if knowledge else {
+                "device_id": device_id,
+                "analyses": [],
+                "learned_params": {},
+                "performance_history": [],
+                "capabilities_inferred": [],
+                "description_ai": "",
+                "mesh_suggestions": [],
+            })
+            return
 
         else:
             # Auto-redirect mobile user-agents to mobile PWA from root
@@ -2262,7 +2329,12 @@ class OmnixHandler(SimpleHTTPRequestHandler):
             """Start executing a behavior tree."""
             device_id = data.get("device_id", "")
             tree_data = data.get("tree", {})
-            tick_rate = float(data.get("tick_rate_hz", 5.0))
+            try:
+                tick_rate = float(data.get("tick_rate_hz", 5.0))
+                if tick_rate <= 0 or tick_rate > 100:
+                    raise ValueError("tick_rate_hz must be between 0.1 and 100")
+            except (ValueError, TypeError) as e:
+                raise ValidationError(f"Invalid tick_rate_hz: {e}") from e
 
             device = devices.get(device_id)
             if not device:
@@ -2386,7 +2458,12 @@ class OmnixHandler(SimpleHTTPRequestHandler):
         elif parsed.path.startswith("/api/marketplace/review/"):
             """Add a review to a marketplace item."""
             item_id = parsed.path.split("/api/marketplace/review/")[1]
-            rating = int(data.get("rating", 5))
+            try:
+                rating = int(data.get("rating", 5))
+                if rating < 1 or rating > 5:
+                    raise ValueError("rating must be between 1 and 5")
+            except (ValueError, TypeError) as e:
+                raise ValidationError(f"Invalid rating: {e}") from e
             comment = data.get("comment", "")
             author = data.get("author", "User")
             review = marketplace_store.add_review(item_id, rating, comment, author)
@@ -2639,7 +2716,12 @@ class OmnixHandler(SimpleHTTPRequestHandler):
                 b = swarm_coordinator.sync.create_barrier(gid, label, group.device_ids())
                 self._json_response({"ok": True, "barrier": b.to_dict()})
             elif action == "countdown":
-                secs = int(data.get("seconds", 3))
+                try:
+                    secs = int(data.get("seconds", 3))
+                    if secs <= 0 or secs > 300:
+                        raise ValueError("seconds must be between 1 and 300")
+                except (ValueError, TypeError) as e:
+                    raise ValidationError(f"Invalid seconds: {e}") from e
                 label = data.get("label", "Launch")
                 c = swarm_coordinator.sync.create_countdown(gid, secs, label)
                 result = swarm_coordinator.sync.start_countdown(c.id)
@@ -2666,13 +2748,57 @@ class OmnixHandler(SimpleHTTPRequestHandler):
 
         elif parsed.path == "/api/swarm/formation-preview":
             ft = data.get("formation_type", "line")
-            count = int(data.get("count", 4))
+            try:
+                count = int(data.get("count", 4))
+                if count <= 0 or count > 100:
+                    raise ValueError("count must be between 1 and 100")
+            except (ValueError, TypeError) as e:
+                raise ValidationError(f"Invalid count: {e}") from e
             params = data.get("params", {})
             self._json_response(swarm_coordinator.get_formation_preview(ft, count, params))
 
         elif parsed.path.startswith("/api/swarm/mission/") and parsed.path.endswith("/stop"):
             mid = parsed.path.split("/api/swarm/mission/")[1].rsplit("/stop")[0]
             self._json_response(swarm_coordinator.stop_mission(mid))
+
+        # ── AI Enhancement POST routes ───────────────────────
+        elif parsed.path.startswith("/api/ai/analyze/"):
+            device_id = parsed.path.split("/api/ai/analyze/")[1]
+            if device_id not in devices:
+                raise NotFoundError(f"Device {device_id} not found")
+            image_b64 = data.get("image", None)
+            result = ai_enhancer.full_analysis(device_id, image_b64=image_b64)
+            self._json_response(result)
+            return
+
+        elif parsed.path.startswith("/api/ai/enhance-3d/"):
+            device_id = parsed.path.split("/api/ai/enhance-3d/")[1]
+            if device_id not in devices:
+                raise NotFoundError(f"Device {device_id} not found")
+            image_b64 = data.get("image", "")
+            if not image_b64:
+                raise ValidationError("image field is required for 3D enhancement")
+            result = ai_enhancer.enhance_3d_model(device_id, image_b64)
+            self._json_response(result)
+            return
+
+        elif parsed.path.startswith("/api/ai/estimate-physics/"):
+            device_id = parsed.path.split("/api/ai/estimate-physics/")[1]
+            if device_id not in devices:
+                raise NotFoundError(f"Device {device_id} not found")
+            image_b64 = data.get("image", None)
+            result = ai_enhancer.estimate_physics(device_id, image_b64=image_b64)
+            self._json_response(result)
+            return
+
+        elif parsed.path == "/api/ai/configure":
+            provider = data.get("provider", "")
+            api_key = data.get("api_key", "")
+            if not provider or not api_key:
+                raise ValidationError("provider and api_key are required")
+            ai_model_registry.configure_api_key(provider, api_key)
+            self._json_response({"ok": True, "provider": provider})
+            return
 
         else:
             self._json_response({"error": "Not found"}, 404)
@@ -2897,6 +3023,7 @@ def main():
     print(f"  Auth:            {'Enabled (guest mode)' if settings.guest_mode else 'Enabled (login required)'}")
     print(f"  Database:        {settings.db_backend}" + (f" ({settings.db_path})" if settings.db_backend == "sqlite" else ""))
     print(f"  WebSocket:       {'ws://localhost:' + str(settings.ws_port) if ws_started else 'Disabled (polling fallback)'}")
+    print(f"  AI Enhancement:  {'Available' if ai_model_registry else 'Disabled'}")
     print(f"  Environment:     {settings.env}")
     print()
     print("  Simulated devices:")

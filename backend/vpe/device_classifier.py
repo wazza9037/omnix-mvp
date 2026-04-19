@@ -219,27 +219,30 @@ class DeviceClassifier:
         return ""
 
     def _name_drone(self, device_type: str, rotary_count: int, prefix: str) -> str:
-        # Name based on actual rotor count
-        if rotary_count >= 8:
+        # Check device_type keywords FIRST (more specific), then fall back to rotor count
+        if "fixed_wing" in device_type:
+            drone_type = "Fixed-Wing"
+        elif "flying_wing" in device_type:
+            drone_type = "Flying Wing"
+        elif "vtol" in device_type:
+            drone_type = "VTOL Hybrid"
+        elif "helicopter" in device_type or "single_rotor" in device_type:
+            drone_type = "Helicopter"
+        elif "coaxial" in device_type:
+            drone_type = "Coaxial"
+        elif "blimp" in device_type:
+            drone_type = "Airship"
+        elif "nano" in device_type:
+            drone_type = "Nano"
+        elif "racing" in device_type:
+            drone_type = "Racing Quadcopter"
+        # Fall back to rotor count for generic multi-rotors
+        elif rotary_count >= 8:
             drone_type = "Octocopter"
         elif rotary_count >= 6:
             drone_type = "Hexacopter"
         elif rotary_count >= 3:
             drone_type = "Quadcopter"
-        elif "fixed_wing" in device_type:
-            drone_type = "Fixed-Wing"
-        elif "vtol" in device_type:
-            drone_type = "VTOL Hybrid"
-        elif "helicopter" in device_type or "single_rotor" in device_type:
-            drone_type = "Helicopter"
-        elif "flying_wing" in device_type:
-            drone_type = "Flying Wing"
-        elif "blimp" in device_type:
-            drone_type = "Airship"
-        elif "racing" in device_type:
-            drone_type = "Racing Quadcopter"
-        elif "nano" in device_type:
-            drone_type = "Nano Drone"
         else:
             drone_type = "Drone"
 
@@ -256,7 +259,9 @@ class DeviceClassifier:
         elif "racing" in device_type and "Racing" not in drone_type:
             usage = "Racing "
 
-        return f"{prefix} {usage}{drone_type} Drone".strip()
+        # Use "UAV" for fixed-wing military/large drones, "Drone" for others
+        suffix = "UAV" if "fixed_wing" in device_type or "flying_wing" in device_type else "Drone"
+        return f"{prefix} {usage}{drone_type} {suffix}".strip()
 
     def _name_ground_robot(self, device_type: str, rotary_count: int, prefix: str) -> str:
         if "tracked" in device_type:

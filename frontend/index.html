@@ -2039,6 +2039,129 @@
   .sensor-alert-modal-content .modal-actions .btn-primary {
     background: var(--accent); color: #fff; border-color: var(--accent);
   }
+
+  /* ── AI Enhancement UI ────────────────────────────────────── */
+
+  .ai-enhance-btn {
+    background: linear-gradient(135deg, rgba(139,92,246,0.2), rgba(0,180,216,0.15));
+    border: 1px solid rgba(139,92,246,0.4); color: var(--text);
+    padding: 8px 12px; border-radius: 6px; cursor: pointer;
+    font-size: 12px; font-weight: 600; font-family: inherit;
+    transition: all 0.15s; width: 100%; text-align: center;
+    margin-bottom: 8px;
+  }
+  .ai-enhance-btn:hover { border-color: var(--purple); background: rgba(139,92,246,0.3); color: var(--text); }
+
+  .ai-analysis-panel {
+    background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(0,180,216,0.04));
+    border: 1px solid rgba(139,92,246,0.2); border-radius: 8px; padding: 12px;
+    margin-bottom: 12px; animation: slideDown 0.3s ease-out;
+  }
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .ai-panel-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px; font-weight: 600; font-size: 12px;
+  }
+  .ai-panel-close {
+    background: transparent; border: none; color: var(--text-muted); cursor: pointer;
+    font-size: 16px; padding: 0; line-height: 1;
+  }
+  .ai-panel-close:hover { color: var(--text); }
+
+  .ai-loading-spinner {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 16px; font-size: 12px; color: var(--text-muted);
+  }
+  .spinner {
+    width: 16px; height: 16px; border: 2px solid rgba(0,180,216,0.2);
+    border-top-color: var(--teal); border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .ai-result-section {
+    margin-bottom: 10px; background: rgba(0,0,0,0.2); border-radius: 6px; overflow: hidden;
+  }
+  .ai-result-header {
+    background: rgba(139,92,246,0.15); padding: 8px 10px; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 11px; font-weight: 600; user-select: none;
+  }
+  .ai-result-header:hover { background: rgba(139,92,246,0.25); }
+  .ai-result-header .expand-icon {
+    font-size: 12px; transition: transform 0.2s;
+  }
+  .ai-result-header.collapsed .expand-icon { transform: rotate(-90deg); }
+
+  .ai-result-content {
+    padding: 10px; font-size: 11px; max-height: 300px; overflow-y: auto;
+  }
+  .ai-result-content.hidden { display: none; }
+
+  .ai-classification { margin-bottom: 8px; }
+  .ai-classification-tag {
+    display: inline-block; background: rgba(139,92,246,0.2); border: 1px solid rgba(139,92,246,0.4);
+    padding: 3px 8px; border-radius: 4px; font-size: 10px; margin-right: 4px; margin-bottom: 4px;
+  }
+
+  .ai-confidence-bar {
+    display: flex; align-items: center; gap: 6px; margin: 6px 0;
+  }
+  .ai-confidence-bar .label { min-width: 80px; font-size: 10px; color: var(--text-muted); }
+  .ai-confidence-bar .bar {
+    flex: 1; height: 6px; background: rgba(0,0,0,0.3); border-radius: 3px; overflow: hidden;
+  }
+  .ai-confidence-bar .fill {
+    height: 100%; border-radius: 3px; transition: width 0.3s;
+  }
+  .ai-confidence-bar .fill.high { background: var(--success); }
+  .ai-confidence-bar .fill.med { background: var(--warning); }
+  .ai-confidence-bar .fill.low { background: var(--danger); }
+  .ai-confidence-bar .pct { min-width: 32px; text-align: right; font-size: 10px; font-weight: 600; }
+
+  .ai-suggestion-item {
+    background: rgba(0,0,0,0.2); padding: 8px; border-radius: 4px; margin: 6px 0;
+    border-left: 3px solid rgba(0,180,216,0.3); font-size: 10px;
+  }
+  .ai-suggestion-item .title { font-weight: 600; margin-bottom: 2px; }
+  .ai-suggestion-item .value { color: var(--teal); font-family: monospace; }
+
+  .ai-button-group {
+    display: flex; gap: 6px; margin-top: 8px;
+  }
+  .ai-apply-btn {
+    flex: 1; background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3);
+    color: var(--success); padding: 6px 8px; border-radius: 4px; font-size: 10px;
+    cursor: pointer; font-weight: 600; transition: all 0.15s;
+  }
+  .ai-apply-btn:hover { background: rgba(16,185,129,0.25); border-color: var(--success); }
+
+  .ai-timeline {
+    max-height: 200px; overflow-y: auto; padding: 0 4px;
+  }
+  .ai-timeline-entry {
+    padding: 8px; margin-bottom: 6px; background: rgba(0,0,0,0.2);
+    border-left: 2px solid rgba(0,180,216,0.3); border-radius: 4px;
+    cursor: pointer; transition: all 0.15s; font-size: 10px;
+  }
+  .ai-timeline-entry:hover { border-left-color: var(--teal); background: rgba(0,180,216,0.1); }
+  .ai-timeline-entry .ts { color: var(--text-muted); font-size: 9px; }
+  .ai-timeline-entry .type { color: var(--teal); font-weight: 600; margin: 2px 0; }
+  .ai-timeline-entry .findings { color: var(--text); margin-top: 2px; }
+
+  .ai-model-indicator {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 4px; font-size: 9px;
+    background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.2);
+  }
+  .ai-model-indicator .status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+  }
+  .ai-model-indicator .status-dot.available { background: var(--success); }
+  .ai-model-indicator .status-dot.partial { background: var(--warning); }
+  .ai-model-indicator .status-dot.unavailable { background: var(--danger); }
+
 </style>
 </head>
 <body>
@@ -2530,6 +2653,9 @@ function onResize() {
 function animate() {
   requestAnimationFrame(animate);
 
+  // Skip rendering if page is hidden (performance optimization)
+  if (document.hidden) return;
+
   // Gentle idle rotation if nothing is animating
   if (!animating && deviceMesh && !isDragging) {
     deviceMesh.rotation.y += 0.002;
@@ -2554,10 +2680,45 @@ function animate() {
 
 // ─── 3D mesh builders ───
 
+function disposeMaterial(mat) {
+  if (mat) { mat.dispose(); }
+}
+
+function disposeGeometry(geom) {
+  if (geom) { geom.dispose(); }
+}
+
+function disposeMesh(mesh) {
+  if (!mesh) return;
+  if (mesh.geometry) disposeGeometry(mesh.geometry);
+  if (mesh.material) {
+    if (Array.isArray(mesh.material)) {
+      mesh.material.forEach(disposeMaterial);
+    } else {
+      disposeMaterial(mesh.material);
+    }
+  }
+  // Recursively dispose children
+  if (mesh.children) {
+    mesh.children.forEach(disposeMesh);
+  }
+}
+
 function clearMesh() {
-  if (deviceMesh) { scene.remove(deviceMesh); deviceMesh = null; }
-  if (pathLine) { scene.remove(pathLine); pathLine = null; }
-  pathPoints.forEach(p => scene.remove(p));
+  if (deviceMesh) {
+    disposeMesh(deviceMesh);
+    scene.remove(deviceMesh);
+    deviceMesh = null;
+  }
+  if (pathLine) {
+    disposeMesh(pathLine);
+    scene.remove(pathLine);
+    pathLine = null;
+  }
+  pathPoints.forEach(p => {
+    disposeMesh(p);
+    scene.remove(p);
+  });
   pathPoints = [];
 }
 
@@ -6558,6 +6719,11 @@ function renderOverviewRightPanel() {
       <div class="section-title">Quick Telemetry</div>
       ${teleHTML}
     </div>
+    <div class="rpanel-section">
+      <button class="ai-enhance-btn" onclick="aiEnhanceDevice('${activeTabId}')">🧠 AI Enhance</button>
+      <div id="ai-analysis-${activeTabId}"></div>
+      <div id="ai-timeline-${activeTabId}"></div>
+    </div>
     <div class="rpanel-section" id="ota-firmware-panel">
       <div class="section-title">Firmware</div>
       <div id="ota-fw-info" style="font-size:11px;color:var(--text-muted)">Loading...</div>
@@ -10350,6 +10516,291 @@ function swarmUpdate3D() {
 installKeyboardShortcuts();
 installCmdbarHandlers();
 bootstrap();
+
+// ── AI Enhancement UI Functions ──
+
+// Global state for AI analyses
+const aiAnalysisCache = {};
+
+async function aiEnhanceDevice(deviceId) {
+  const container = document.getElementById(`ai-analysis-${deviceId}`);
+  if (!container) return;
+
+  // Show loading spinner
+  container.innerHTML = `
+    <div class="ai-analysis-panel">
+      <div class="ai-panel-header">
+        <span>🧠 Analyzing...</span>
+        <button class="ai-panel-close" onclick="this.parentElement.parentElement.innerHTML=''">×</button>
+      </div>
+      <div class="ai-loading-spinner">
+        <div class="spinner"></div>
+        <span>Running AI analysis...</span>
+      </div>
+    </div>
+  `;
+
+  try {
+    const ws = workspaces[deviceId];
+    if (!ws) return;
+
+    // Call API to analyze device
+    const response = await fetch(`/api/ai/analyze/${deviceId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        device_type: ws.device_type,
+        physics: ws.physics || {},
+        telemetry: (simDevices[deviceId]?.telemetry || {})
+      })
+    });
+
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
+    const analysis = await response.json();
+
+    // Cache the analysis
+    if (!aiAnalysisCache[deviceId]) aiAnalysisCache[deviceId] = [];
+    aiAnalysisCache[deviceId].unshift({
+      timestamp: new Date().toISOString(),
+      analysis: analysis,
+      model: analysis.model_used || 'Unknown'
+    });
+
+    // Render results
+    renderAIPanel(container, analysis, deviceId);
+
+    // Load and render timeline
+    await loadAIKnowledge(deviceId);
+
+  } catch (error) {
+    console.error('AI enhance error:', error);
+    container.innerHTML = `
+      <div class="ai-analysis-panel">
+        <div class="ai-panel-header">
+          <span>Error</span>
+          <button class="ai-panel-close" onclick="this.parentElement.parentElement.innerHTML=''">×</button>
+        </div>
+        <div style="padding:10px;font-size:11px;color:var(--danger)">
+          Failed to run AI analysis. Check console for details.
+        </div>
+      </div>
+    `;
+  }
+}
+
+async function loadAIKnowledge(deviceId) {
+  const timelineContainer = document.getElementById(`ai-timeline-${deviceId}`);
+  if (!timelineContainer) return;
+
+  try {
+    const response = await fetch(`/api/ai/knowledge/${deviceId}`);
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
+    const knowledge = await response.json();
+
+    // Merge with cache
+    const combined = [...(aiAnalysisCache[deviceId] || []), ...(knowledge.analyses || [])];
+    const unique = Array.from(new Map(combined.map(x => [x.timestamp, x])).values());
+    unique.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    renderAITimeline(timelineContainer, unique.slice(0, 10), deviceId);
+  } catch (error) {
+    console.error('Failed to load AI knowledge:', error);
+  }
+}
+
+function renderAIPanel(container, analysis, deviceId) {
+  const conf = analysis.confidence || 0;
+  const confClass = conf > 0.8 ? 'high' : conf > 0.5 ? 'med' : 'low';
+  const confPct = (conf * 100).toFixed(0);
+
+  const classification = analysis.classification || {};
+  const classHTML = Object.entries(classification).slice(0, 3).map(([k, v]) => `
+    <span class="ai-classification-tag">${escapeHtml(k)}: ${typeof v === 'number' ? v.toFixed(2) : v}</span>
+  `).join('');
+
+  const physics = analysis.physics_estimates || {};
+  const physicsHTML = Object.entries(physics).slice(0, 4).map(([k, v]) => `
+    <div class="ai-suggestion-item">
+      <div class="title">${escapeHtml(k.replace(/_/g, ' '))}</div>
+      <div class="value">${typeof v === 'number' ? v.toFixed(4) : v}</div>
+    </div>
+  `).join('');
+
+  const suggestions = analysis.capability_suggestions || [];
+  const suggestionsHTML = suggestions.slice(0, 3).map(s => `
+    <div class="ai-suggestion-item">
+      <div class="title">${escapeHtml(s.capability || 'Unknown')}</div>
+      <div class="value">${escapeHtml(s.recommendation || 'No details')}</div>
+    </div>
+  `).join('');
+
+  container.innerHTML = `
+    <div class="ai-analysis-panel">
+      <div class="ai-panel-header">
+        <span>🧠 AI Analysis Results</span>
+        <button class="ai-panel-close" onclick="this.parentElement.parentElement.innerHTML=''">×</button>
+      </div>
+
+      <div class="ai-result-section">
+        <div class="ai-result-header" onclick="toggleAISection(this)">
+          <span>Classification</span>
+          <span class="expand-icon">▼</span>
+        </div>
+        <div class="ai-result-content">
+          ${classHTML || '<div style="color:var(--text-muted);font-size:10px">No classification data</div>'}
+        </div>
+      </div>
+
+      <div class="ai-result-section">
+        <div class="ai-result-header" onclick="toggleAISection(this)">
+          <span>Confidence Score</span>
+          <span class="expand-icon">▼</span>
+        </div>
+        <div class="ai-result-content">
+          <div class="ai-confidence-bar">
+            <span class="label">Overall</span>
+            <div class="bar">
+              <div class="fill ${confClass}" style="width:${confPct}%"></div>
+            </div>
+            <span class="pct">${confPct}%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ai-result-section">
+        <div class="ai-result-header" onclick="toggleAISection(this)">
+          <span>Physics Estimates</span>
+          <span class="expand-icon">▼</span>
+        </div>
+        <div class="ai-result-content">
+          ${physicsHTML || '<div style="color:var(--text-muted);font-size:10px">No physics estimates</div>'}
+          ${physicsHTML ? `<div class="ai-button-group">
+            <button class="ai-apply-btn" onclick="applyAISuggestions('${deviceId}', 'physics')">📤 Apply to Physics</button>
+          </div>` : ''}
+        </div>
+      </div>
+
+      <div class="ai-result-section">
+        <div class="ai-result-header" onclick="toggleAISection(this)">
+          <span>Capability Suggestions</span>
+          <span class="expand-icon">▼</span>
+        </div>
+        <div class="ai-result-content">
+          ${suggestionsHTML || '<div style="color:var(--text-muted);font-size:10px">No suggestions</div>'}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderAITimeline(container, analyses, deviceId) {
+  if (!analyses || analyses.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const entriesHTML = analyses.map((entry, i) => {
+    const ts = new Date(entry.timestamp);
+    const timeStr = ts.toLocaleTimeString();
+    const dateStr = ts.toLocaleDateString();
+    const analysis = entry.analysis || {};
+    const findings = analysis.classification ? Object.keys(analysis.classification).slice(0, 2).join(', ') : 'Analysis run';
+
+    return `
+      <div class="ai-timeline-entry" onclick="expandAITimelineEntry(this)">
+        <div class="ts">${dateStr} ${timeStr}</div>
+        <div class="type">${analysis.model_used || 'AI Analysis'}</div>
+        <div class="findings">${escapeHtml(findings.slice(0, 40))}</div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="ai-analysis-panel">
+      <div class="ai-panel-header">
+        <span>📊 AI Knowledge Timeline</span>
+      </div>
+      <div class="ai-timeline">
+        ${entriesHTML}
+      </div>
+    </div>
+  `;
+}
+
+function toggleAISection(header) {
+  const content = header.nextElementSibling;
+  header.classList.toggle('collapsed');
+  content.classList.toggle('hidden');
+}
+
+async function applyAISuggestions(deviceId, type) {
+  const ws = workspaces[deviceId];
+  if (!ws) return;
+
+  if (!confirm(`Apply ${type} suggestions from AI analysis?`)) return;
+
+  try {
+    const cache = aiAnalysisCache[deviceId];
+    if (!cache || cache.length === 0) {
+      showToast('No AI analysis available', 'error');
+      return;
+    }
+
+    const analysis = cache[0].analysis;
+
+    if (type === 'physics') {
+      const estimates = analysis.physics_estimates || {};
+      const physics = ws.physics || {};
+
+      // Merge estimates into physics
+      Object.assign(physics, estimates);
+      physics.confidence = (analysis.confidence || physics.confidence || 0);
+      physics.samples = (physics.samples || 0) + 1;
+
+      // Update workspace
+      workspaces[deviceId].physics = physics;
+      showToast('Physics parameters updated from AI analysis', 'success');
+      renderOverviewRightPanel();
+    } else if (type === 'mesh') {
+      const meshSuggestion = analysis.mesh_suggestion;
+      if (meshSuggestion) {
+        ws.mesh = meshSuggestion;
+        showToast('Mesh updated from AI suggestion', 'success');
+        renderOverviewRightPanel();
+      }
+    }
+  } catch (error) {
+    console.error('Error applying suggestions:', error);
+    showToast('Failed to apply suggestions', 'error');
+  }
+}
+
+async function expandAITimelineEntry(elem) {
+  const ts = elem.querySelector('.ts').textContent;
+  const type = elem.querySelector('.type').textContent;
+  // In a real implementation, fetch and show details
+  console.log('Expanding timeline entry:', ts, type);
+}
+
+async function checkAIModels() {
+  try {
+    const response = await fetch('/api/ai/models');
+    if (!response.ok) throw new Error(`API error: ${response.status}`);
+    const status = await response.json();
+    return status;
+  } catch (error) {
+    console.error('Failed to check AI models:', error);
+    return { available: false, message: 'Unable to check' };
+  }
+}
+
+// Initialize AI model status check on startup
+(async function initAIIndicator() {
+  const status = await checkAIModels();
+  // Could add a header indicator here if needed
+  console.log('AI models status:', status);
+})();
+
 </script>
 </body>
 </html>

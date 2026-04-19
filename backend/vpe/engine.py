@@ -106,6 +106,12 @@ class _SimulatedAnalysis:
             self.rotary_count = 4
         elif "fixed_wing" in device_type or "flying_wing" in device_type or "blimp" in device_type:
             self.rotary_count = 0
+        elif "single_rotor" in device_type or "helicopter" in device_type:
+            self.rotary_count = 1
+        elif "coaxial" in device_type:
+            self.rotary_count = 2
+        elif "vtol" in device_type:
+            self.rotary_count = 4  # VTOL has rotors but is named differently
 
 
 _SIMULATED_DEVICE_TYPES = [

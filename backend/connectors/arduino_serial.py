@@ -255,7 +255,8 @@ class ArduinoSerialConnector(SimulatedBackendMixin, ConnectorBase):
         if not self._use_simulation:
             try:
                 self._serial.close()
-            except Exception:
+            except Exception as e:
+                # Serial may already be closed; silently ignore
                 pass
         self._devices.clear()
         self._mark_connected(False)

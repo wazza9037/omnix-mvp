@@ -274,7 +274,9 @@ class MavlinkConnector(SimulatedBackendMixin, ConnectorBase):
         self._stop.set()
         if not self._use_simulation and hasattr(self, "_mav"):
             try: self._mav.close()
-            except Exception: pass
+            except Exception as e:
+                # MAVLink close may fail if already disconnected; silently ignore
+                pass
         self._devices.clear()
         self._mark_connected(False)
 

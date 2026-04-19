@@ -111,10 +111,34 @@ def _prim(ptype, geo, mat, pos=(0, 0, 0), rot=(0, 0, 0), name=""):
 
 
 # ═══════════════════════════════════════════
-#  DRONE — body + N arms + N rotors
+#  DRONE — dispatches to sub-generators based on device_type
 # ═══════════════════════════════════════════
 
 def _gen_drone(sx, sy, sz, mat, accent, rc, lc, cls, phys):
+    dtype = cls.get("device_type", "") if isinstance(cls, dict) else getattr(cls, "device_type", "")
+
+    # Fixed-wing aircraft / UAV
+    if "fixed_wing" in dtype or "flying_wing" in dtype:
+        return _gen_fixed_wing(sx, sy, sz, mat, accent, cls)
+
+    # Helicopter / single-rotor
+    if "helicopter" in dtype or "single_rotor" in dtype:
+        return _gen_helicopter(sx, sy, sz, mat, accent, cls)
+
+    # VTOL hybrid
+    if "vtol" in dtype:
+        return _gen_vtol(sx, sy, sz, mat, accent, rc, cls)
+
+    # Blimp / airship
+    if "blimp" in dtype or "airship" in dtype:
+        return _gen_blimp(sx, sy, sz, mat, accent, cls)
+
+    # Default: multi-rotor (quadcopter, hexacopter, octocopter, etc.)
+    return _gen_multirotor(sx, sy, sz, mat, accent, rc, cls)
+
+
+def _gen_multirotor(sx, sy, sz, mat, accent, rc, cls):
+    """Quadcopter / hexacopter / octocopter — radial arms + rotors."""
     parts = []
     rotors = max(rc, 4)
     body_w = sx * 0.5
@@ -152,6 +176,217 @@ def _gen_drone(sx, sy, sz, mat, accent, rc, lc, cls, phys):
     for lx in [-body_w * 0.4, body_w * 0.4]:
         parts.append(_prim("cylinder", {"rt": 0.02, "rb": 0.02, "h": body_h * 1.5},
                            accent, (lx, -body_h * 0.8, 0), name="landing_gear"))
+
+    return parts
+
+
+def _gen_fixed_wing(sx, sy, sz, mat, accent, cls):
+    """Fixed-wing aircraft / UAV — fuselage + wings + tail + propeller."""
+    parts = []
+    fuselage_len = max(sx, sz) * 0.7
+    fuselage_r = sy * 0.12
+    wingspan = max(sx, sz) * 0.9
+
+    # Fuselage (elongated cylinder)
+    parts.append(_prim("cylinder", {"rt": fuselage_r * 0.6, "rb": fuselage_r, "h": fuselage_len},
+                        mat, (0, 0, 0), (1.5708, 0, 0), name="fuselage"))
+
+    # Nose cone
+    parts.append(_prim("cone", {"r": fuselage_r, "h": fuselage_len * 0.2},
+                        accent, (0, 0, fuselage_len * 0.6), (1.5708, 0, 0), name="nose"))
+
+    # Main wings (two flat boxes extending out from fuselage center)
+    wing_chord = fuselage_len * 0.25
+    wing_thickness = 0.04
+    for side in [-1, 1]:
+        parts.append(_prim("box", {"w": wingspan * 0.48, "h": wing_thickness, "d": wing_chord},
+                           mat, (side * wingspan * 0.27, 0, fuselage_len * 0.05), name=f"wing_{'+' if side > 0 else '-'}"))
+
+    # Wing tips (angled)
+    for side in [-1, 1]:
+        parts.append(_prim("box", {"w": wingspan * 0.06, "h": wing_thickness * 1.5, "d": wing_chord * 0.6},
+                           accent, (side * wingspan * 0.5, 0.04, fuselage_len * 0.05),
+                           (0, 0, side * 0.15), name=f"wingtip_{'+' if side > 0 else '-'}"))
+
+    # Horizontal tail stabilizer
+    tail_span = wingspan * 0.3
+    for side in [-1, 1]:
+        parts.append(_prim("box", {"w": tail_span * 0.48, "h": 0.025, "d": fuselage_len * 0.1},
+                           accent, (side * tail_span * 0.25, 0, -fuselage_len * 0.48), name=f"h_stab_{'+' if side > 0 else '-'}"))
+
+    # Vertical tail stabilizer (fin)
+    parts.append(_prim("box", {"w": 0.025, "h": fuselage_r * 1.8, "d": fuselage_len * 0.15},
+                        accent, (0, fuselage_r * 1.0, -fuselage_len * 0.45), name="v_stab"))
+
+    # Propeller (front or rear depending on type)
+    prop_z = fuselage_len * 0.55 if "pusher" not in cls.get("device_type", "") else -fuselage_len * 0.55
+    parts.append(_prim("cylinder", {"rt": 0.03, "rb": 0.03, "h": fuselage_r * 0.3},
+                        {"color": "#222222", "metalness": 0.5, "roughness": 0.4},
+                        (0, 0, prop_z), (1.5708, 0, 0), name="prop_hub"))
+    # Propeller blades
+    prop_r = fuselage_r * 2.5
+    for i in range(2):
+        angle = i * 3.14159
+        bx = prop_r * 0.5 * _cos(angle)
+        by = prop_r * 0.5 * _sin(angle)
+        parts.append(_prim("box", {"w": prop_r, "h": 0.02, "d": 0.06},
+                           {"color": "#333333", "metalness": 0.3, "roughness": 0.5},
+                           (bx, by, prop_z + 0.02), (0, 0, angle), name=f"prop_blade_{i}"))
+
+    # Camera/sensor pod (belly)
+    parts.append(_prim("sphere", {"r": fuselage_r * 0.4},
+                        {"color": "#111111", "metalness": 0.5, "roughness": 0.3},
+                        (0, -fuselage_r * 0.9, fuselage_len * 0.1), name="sensor_pod"))
+
+    return parts
+
+
+def _gen_helicopter(sx, sy, sz, mat, accent, cls):
+    """Helicopter / single-rotor — fuselage + main rotor + tail boom + tail rotor."""
+    parts = []
+    body_len = max(sx, sz) * 0.5
+    body_r = sy * 0.15
+    rotor_r = max(sx, sz) * 0.45
+
+    # Fuselage
+    parts.append(_prim("box", {"w": body_r * 2, "h": body_r * 1.2, "d": body_len},
+                        mat, (0, 0, 0), name="fuselage"))
+
+    # Cockpit (front bubble)
+    parts.append(_prim("sphere", {"r": body_r * 0.9},
+                        {"color": "#222222", "metalness": 0.3, "roughness": 0.3, "opacity": 0.6},
+                        (0, body_r * 0.2, body_len * 0.4), name="cockpit"))
+
+    # Main rotor mast
+    parts.append(_prim("cylinder", {"rt": 0.04, "rb": 0.05, "h": body_r * 0.8},
+                        accent, (0, body_r * 1.0, 0), name="rotor_mast"))
+
+    # Main rotor disc (torus to represent spinning blades)
+    parts.append(_prim("torus", {"r": rotor_r, "tube": 0.03},
+                        {**accent, "emissive": accent["color"], "emissiveIntensity": 0.3},
+                        (0, body_r * 1.5, 0), (1.5708, 0, 0), name="main_rotor"))
+
+    # Main rotor blades
+    for i in range(2):
+        angle = i * 3.14159
+        bx = rotor_r * 0.5 * _cos(angle)
+        bz = rotor_r * 0.5 * _sin(angle)
+        parts.append(_prim("box", {"w": rotor_r * 0.95, "h": 0.02, "d": 0.08},
+                           accent, (bx, body_r * 1.5, bz), (0, angle, 0), name=f"blade_{i}"))
+
+    # Tail boom
+    tail_len = body_len * 0.7
+    parts.append(_prim("cylinder", {"rt": body_r * 0.15, "rb": body_r * 0.25, "h": tail_len},
+                        mat, (0, body_r * 0.3, -body_len * 0.5 - tail_len * 0.4),
+                        (1.5708, 0, 0), name="tail_boom"))
+
+    # Tail fin
+    parts.append(_prim("box", {"w": 0.02, "h": body_r * 1.2, "d": body_len * 0.12},
+                        accent, (0, body_r * 0.7, -body_len * 0.5 - tail_len * 0.75), name="tail_fin"))
+
+    # Tail rotor
+    tail_rotor_r = rotor_r * 0.2
+    parts.append(_prim("torus", {"r": tail_rotor_r, "tube": 0.015},
+                        {**accent, "emissive": accent["color"], "emissiveIntensity": 0.3},
+                        (body_r * 0.2, body_r * 0.6, -body_len * 0.5 - tail_len * 0.75),
+                        (0, 0, 1.5708), name="tail_rotor"))
+
+    # Skid landing gear
+    skid_len = body_len * 0.6
+    for side in [-1, 1]:
+        # Skid bar
+        parts.append(_prim("cylinder", {"rt": 0.02, "rb": 0.02, "h": skid_len},
+                           {"color": "#444444", "metalness": 0.4, "roughness": 0.5},
+                           (side * body_r * 0.7, -body_r * 0.8, 0),
+                           (1.5708, 0, 0), name=f"skid_{'+' if side > 0 else '-'}"))
+        # Skid struts
+        for zf in [-0.25, 0.25]:
+            parts.append(_prim("cylinder", {"rt": 0.015, "rb": 0.015, "h": body_r * 0.6},
+                               {"color": "#444444", "metalness": 0.4, "roughness": 0.5},
+                               (side * body_r * 0.6, -body_r * 0.5, body_len * zf), name="skid_strut"))
+
+    return parts
+
+
+def _gen_vtol(sx, sy, sz, mat, accent, rc, cls):
+    """VTOL hybrid — fixed wing body with tilt rotors."""
+    parts = []
+    fuselage_len = max(sx, sz) * 0.6
+    fuselage_r = sy * 0.1
+    wingspan = max(sx, sz) * 0.8
+
+    # Fuselage
+    parts.append(_prim("cylinder", {"rt": fuselage_r * 0.7, "rb": fuselage_r, "h": fuselage_len},
+                        mat, (0, 0, 0), (1.5708, 0, 0), name="fuselage"))
+
+    # Wings
+    wing_chord = fuselage_len * 0.2
+    for side in [-1, 1]:
+        parts.append(_prim("box", {"w": wingspan * 0.4, "h": 0.03, "d": wing_chord},
+                           mat, (side * wingspan * 0.25, 0, 0), name=f"wing_{'+' if side > 0 else '-'}"))
+
+    # Tilt rotors on wing tips (4 total — 2 per wing)
+    rotor_r = wingspan * 0.08
+    for side in [-1, 1]:
+        for zi, zoff in enumerate([0.1, -0.1]):
+            wx = side * wingspan * 0.45
+            wz = fuselage_len * zoff
+            parts.append(_prim("cylinder", {"rt": 0.03, "rb": 0.03, "h": 0.1},
+                               accent, (wx, 0.08, wz), name=f"motor_{side}_{zi}"))
+            parts.append(_prim("torus", {"r": rotor_r, "tube": 0.02},
+                               {**accent, "emissive": accent["color"], "emissiveIntensity": 0.3},
+                               (wx, 0.15, wz), (1.5708, 0, 0), name=f"rotor_{side}_{zi}"))
+
+    # Tail
+    parts.append(_prim("box", {"w": 0.02, "h": fuselage_r * 1.5, "d": fuselage_len * 0.12},
+                        accent, (0, fuselage_r * 0.8, -fuselage_len * 0.48), name="v_stab"))
+    for side in [-1, 1]:
+        parts.append(_prim("box", {"w": wingspan * 0.12, "h": 0.02, "d": fuselage_len * 0.08},
+                           accent, (side * wingspan * 0.06, 0, -fuselage_len * 0.48), name="h_stab"))
+
+    return parts
+
+
+def _gen_blimp(sx, sy, sz, mat, accent, cls):
+    """Blimp / airship — large envelope + gondola."""
+    parts = []
+    envelope_len = max(sx, sz) * 0.8
+    envelope_r = sy * 0.25
+
+    # Main envelope (elongated sphere via stretched cylinder + end caps)
+    parts.append(_prim("cylinder", {"rt": envelope_r * 0.9, "rb": envelope_r * 0.9, "h": envelope_len * 0.6},
+                        mat, (0, envelope_r * 1.5, 0), (1.5708, 0, 0), name="envelope"))
+    # Front cap
+    parts.append(_prim("sphere", {"r": envelope_r * 0.9},
+                        mat, (0, envelope_r * 1.5, envelope_len * 0.3), name="nose"))
+    # Rear cap
+    parts.append(_prim("sphere", {"r": envelope_r * 0.85},
+                        mat, (0, envelope_r * 1.5, -envelope_len * 0.3), name="tail"))
+
+    # Gondola
+    parts.append(_prim("box", {"w": envelope_r * 0.8, "h": envelope_r * 0.4, "d": envelope_len * 0.25},
+                        accent, (0, 0, 0), name="gondola"))
+
+    # Suspension cables
+    for xf in [-0.3, 0.3]:
+        parts.append(_prim("cylinder", {"rt": 0.01, "rb": 0.01, "h": envelope_r * 1.2},
+                           {"color": "#888888", "metalness": 0.3, "roughness": 0.5},
+                           (envelope_r * xf, envelope_r * 0.7, 0), name="cable"))
+
+    # Tail fins
+    for side in [-1, 1]:
+        parts.append(_prim("box", {"w": envelope_r * 0.5 * abs(side), "h": 0.02, "d": envelope_len * 0.1},
+                           accent, (side * envelope_r * 0.3, envelope_r * 1.5, -envelope_len * 0.35), name="fin"))
+    # Top + bottom fins
+    parts.append(_prim("box", {"w": 0.02, "h": envelope_r * 0.5, "d": envelope_len * 0.1},
+                        accent, (0, envelope_r * 2.0, -envelope_len * 0.35), name="top_fin"))
+
+    # Propellers (side-mounted)
+    for side in [-1, 1]:
+        parts.append(_prim("torus", {"r": envelope_r * 0.2, "tube": 0.02},
+                           {**accent, "emissive": accent["color"], "emissiveIntensity": 0.2},
+                           (side * envelope_r * 0.5, envelope_r * 0.8, -envelope_len * 0.1),
+                           (0, 0, 1.5708), name=f"propeller_{'+' if side > 0 else '-'}"))
 
     return parts
 

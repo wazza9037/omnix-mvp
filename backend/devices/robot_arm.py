@@ -178,7 +178,11 @@ class SimulatedRobotArm(OmnixDevice):
             for joint_name in self.joints:
                 if joint_name in params:
                     min_a, max_a = self.joint_limits[joint_name]
-                    self.joints[joint_name] = max(min_a, min(max_a, params[joint_name]))
+                    # Ensure angle is numeric before clamping
+                    angle_value = params[joint_name]
+                    if not isinstance(angle_value, (int, float)):
+                        continue
+                    self.joints[joint_name] = max(min_a, min(max_a, float(angle_value)))
             self.cycle_count += 1
             self.log_event("movement", "All joints repositioned")
             return {"success": True, "message": "All joints moved to target positions"}

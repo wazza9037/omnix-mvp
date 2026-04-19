@@ -117,17 +117,17 @@ class _SimTello:
         # Rotation: cw/ccw <deg>
         if op == "cw":
             try: self.yaw = (self.yaw + int(parts[1])) % 360
-            except: return "error Bad angle"
+            except (IndexError, ValueError): return "error Bad angle"
             self._drain(0.1); return "ok"
         if op == "ccw":
             try: self.yaw = (self.yaw - int(parts[1])) % 360
-            except: return "error Bad angle"
+            except (IndexError, ValueError): return "error Bad angle"
             self._drain(0.1); return "ok"
 
         # Flips
         if op == "flip":
             try: d = parts[1][0].lower()
-            except: return "error Bad direction"
+            except (IndexError, AttributeError): return "error Bad direction"
             if d in ("f", "b", "l", "r"):
                 self._drain(1.0); return "ok"
             return "error Bad flip direction"
@@ -268,9 +268,9 @@ class TelloConnector(SimulatedBackendMixin, ConnectorBase):
                     self._mark_connected(False, f"Tello didn't enter SDK mode (got {ack!r}). "
                                                  f"Is your computer joined to the Tello's Wi-Fi?")
                     try: self._cmd_sock.close()
-                    except: pass
+                    except OSError: pass
                     try: self._state_sock.close()
-                    except: pass
+                    except OSError: pass
                     return False
                 self._state_thread = threading.Thread(
                     target=self._state_loop, daemon=True, name="tello-state")
@@ -324,9 +324,9 @@ class TelloConnector(SimulatedBackendMixin, ConnectorBase):
         self._stop.set()
         if not self._use_simulation:
             try: self._cmd_sock.close()
-            except: pass
+            except OSError: pass
             try: self._state_sock.close()
-            except: pass
+            except OSError: pass
         self._devices.clear()
         self._mark_connected(False)
 

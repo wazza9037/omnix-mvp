@@ -5,40 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OMNIX — Pi Manager</title>
     <style>
+        :root {
+            --navy: #0D1B2A; --deep-blue: #1B2838; --teal: #00B4D8;
+            --light-teal: #90E0EF; --ice: #CAF0F8; --bg: #0a1120;
+            --card-bg: #111b2e; --card-border: #1e2d45; --text: #e2e8f0;
+            --text-muted: #94a3b8; --success: #10b981; --warning: #f59e0b;
+            --danger: #ef4444; --purple: #8b5cf6; --radius: 10px;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0a0a0f;
-            color: #e0e0e0;
+            background: var(--bg);
+            color: var(--text);
             min-height: 100vh;
         }
 
         /* ── Header ── */
         .header {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: var(--navy);
             padding: 20px 30px;
-            border-bottom: 1px solid #2a2a4a;
+            border-bottom: 1px solid var(--card-border);
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
         .header h1 {
             font-size: 1.5rem;
-            background: linear-gradient(90deg, #00d4ff, #7b2ff7);
+            background: linear-gradient(135deg, var(--teal), var(--light-teal));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
-        .header .subtitle { color: #888; font-size: 0.85rem; margin-top: 2px; }
+        .header .subtitle { color: var(--text-muted); font-size: 0.85rem; margin-top: 2px; }
         .nav-links { display: flex; gap: 12px; }
         .nav-links a {
-            color: #888;
+            color: var(--text-muted);
             text-decoration: none;
             padding: 6px 14px;
             border-radius: 6px;
             font-size: 0.85rem;
             transition: all 0.2s;
         }
-        .nav-links a:hover { background: #1e1e3a; color: #fff; }
+        .nav-links a:hover { background: rgba(0,180,216,0.1); color: var(--text); }
 
         /* ── Main Layout ── */
         .main { display: flex; height: calc(100vh - 70px); }
@@ -46,47 +53,47 @@
         /* ── Left Panel: Agent List ── */
         .agent-list {
             width: 320px;
-            border-right: 1px solid #1e1e3a;
+            border-right: 1px solid var(--card-border);
             overflow-y: auto;
             padding: 16px;
-            background: #0d0d15;
+            background: var(--navy);
         }
         .section-title {
             font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: #666;
+            color: var(--text-muted);
             margin-bottom: 12px;
         }
         .agent-card {
-            background: #141425;
-            border: 1px solid #2a2a4a;
-            border-radius: 10px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius);
             padding: 14px;
             margin-bottom: 10px;
             cursor: pointer;
             transition: all 0.2s;
         }
-        .agent-card:hover { border-color: #00d4ff55; }
-        .agent-card.selected { border-color: #00d4ff; box-shadow: 0 0 12px #00d4ff22; }
+        .agent-card:hover { border-color: rgba(0,180,216,0.4); }
+        .agent-card.selected { border-color: var(--teal); box-shadow: 0 0 12px rgba(0,180,216,0.25); }
         .agent-card .top-row { display: flex; justify-content: space-between; align-items: center; }
         .agent-card .name { font-weight: 600; font-size: 0.95rem; }
         .agent-card .type-badge {
             font-size: 0.7rem;
             padding: 2px 8px;
             border-radius: 10px;
-            background: #7b2ff722;
-            color: #b388ff;
+            background: rgba(139,92,246,0.15);
+            color: var(--light-teal);
         }
         .agent-card .status-row {
             display: flex; align-items: center; gap: 6px;
-            margin-top: 8px; font-size: 0.8rem; color: #888;
+            margin-top: 8px; font-size: 0.8rem; color: var(--text-muted);
         }
         .status-dot {
             width: 8px; height: 8px; border-radius: 50%;
         }
-        .status-dot.online { background: #4caf50; box-shadow: 0 0 6px #4caf5088; }
-        .status-dot.offline { background: #666; }
+        .status-dot.online { background: var(--success); box-shadow: 0 0 6px rgba(16,185,129,0.5); }
+        .status-dot.offline { background: var(--text-muted); }
         .agent-card .hw-row {
             display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;
         }
@@ -94,25 +101,25 @@
             font-size: 0.7rem;
             padding: 2px 7px;
             border-radius: 4px;
-            background: #1e1e3a;
-            color: #aaa;
+            background: var(--card-border);
+            color: var(--text-muted);
         }
 
         .no-agents {
             text-align: center;
             padding: 40px 20px;
-            color: #555;
+            color: var(--text-muted);
         }
         .no-agents .icon { font-size: 3rem; margin-bottom: 12px; }
-        .no-agents h3 { color: #888; margin-bottom: 8px; }
+        .no-agents h3 { color: var(--text-muted); margin-bottom: 8px; }
         .no-agents code {
             display: block;
-            background: #141425;
+            background: var(--card-bg);
             padding: 10px;
             border-radius: 6px;
             margin-top: 12px;
             font-size: 0.8rem;
-            color: #00d4ff;
+            color: var(--teal);
         }
 
         /* ── Right Panel: Agent Detail ── */
@@ -120,13 +127,14 @@
             flex: 1;
             overflow-y: auto;
             padding: 24px;
+            background: var(--bg);
         }
         .detail-header {
             display: flex; justify-content: space-between; align-items: flex-start;
             margin-bottom: 24px;
         }
         .detail-header h2 { font-size: 1.4rem; }
-        .detail-header .desc { color: #888; font-size: 0.9rem; margin-top: 4px; }
+        .detail-header .desc { color: var(--text-muted); font-size: 0.9rem; margin-top: 4px; }
 
         /* Grid sections */
         .detail-grid {
@@ -136,14 +144,14 @@
             margin-bottom: 24px;
         }
         .detail-card {
-            background: #141425;
-            border: 1px solid #1e1e3a;
-            border-radius: 10px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius);
             padding: 16px;
         }
         .detail-card h3 {
             font-size: 0.85rem;
-            color: #888;
+            color: var(--text-muted);
             margin-bottom: 12px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -156,18 +164,18 @@
         .telem-item {
             display: flex; justify-content: space-between; align-items: center;
             padding: 6px 0;
-            border-bottom: 1px solid #1a1a2e;
+            border-bottom: 1px solid var(--card-border);
         }
         .telem-item:last-child { border-bottom: none; }
-        .telem-label { color: #888; font-size: 0.85rem; }
-        .telem-value { font-family: monospace; font-size: 0.9rem; color: #00d4ff; }
+        .telem-label { color: var(--text-muted); font-size: 0.85rem; }
+        .telem-value { font-family: monospace; font-size: 0.9rem; color: var(--teal); }
 
         /* Motor/Servo controls */
         .control-group { margin-bottom: 16px; }
         .control-group label {
             display: block;
             font-size: 0.8rem;
-            color: #888;
+            color: var(--text-muted);
             margin-bottom: 4px;
         }
         .control-row {
@@ -175,31 +183,31 @@
         }
         .control-row input[type="range"] {
             flex: 1;
-            accent-color: #00d4ff;
+            accent-color: var(--teal);
         }
         .control-row .val {
             font-family: monospace;
             min-width: 40px;
             text-align: right;
-            color: #00d4ff;
+            color: var(--teal);
         }
         .btn-group { display: flex; gap: 6px; margin-top: 6px; }
         .btn {
             padding: 6px 14px;
-            border: 1px solid #2a2a4a;
+            border: 1px solid var(--card-border);
             border-radius: 6px;
-            background: #1e1e3a;
-            color: #ccc;
+            background: var(--card-bg);
+            color: var(--text);
             cursor: pointer;
             font-size: 0.8rem;
             transition: all 0.2s;
         }
-        .btn:hover { background: #2a2a5a; color: #fff; }
-        .btn.active { background: #00d4ff22; border-color: #00d4ff; color: #00d4ff; }
-        .btn.danger { border-color: #ff4444; color: #ff4444; }
-        .btn.danger:hover { background: #ff444422; }
-        .btn.primary { background: #7b2ff733; border-color: #7b2ff7; color: #b388ff; }
-        .btn.primary:hover { background: #7b2ff755; }
+        .btn:hover { background: var(--navy); color: var(--text); }
+        .btn.active { background: rgba(0,180,216,0.15); border-color: var(--teal); color: var(--teal); }
+        .btn.danger { border-color: var(--danger); color: var(--danger); }
+        .btn.danger:hover { background: rgba(239,68,68,0.15); }
+        .btn.primary { background: rgba(139,92,246,0.15); border-color: var(--purple); color: var(--light-teal); }
+        .btn.primary:hover { background: rgba(139,92,246,0.25); }
 
         /* Command log */
         .cmd-log {
@@ -210,11 +218,11 @@
         }
         .cmd-entry {
             padding: 4px 8px;
-            border-bottom: 1px solid #1a1a2e;
+            border-bottom: 1px solid var(--card-border);
         }
-        .cmd-entry .time { color: #555; }
-        .cmd-entry .cmd { color: #00d4ff; }
-        .cmd-entry .result { color: #4caf50; }
+        .cmd-entry .time { color: var(--text-muted); }
+        .cmd-entry .cmd { color: var(--teal); }
+        .cmd-entry .result { color: var(--success); }
 
         /* ── Empty state ── */
         .empty-detail {
@@ -223,7 +231,7 @@
             align-items: center;
             justify-content: center;
             height: 100%;
-            color: #555;
+            color: var(--text-muted);
         }
         .empty-detail .icon { font-size: 4rem; margin-bottom: 16px; }
 
@@ -238,10 +246,10 @@
         .gauge .value {
             font-size: 1.4rem;
             font-family: monospace;
-            color: #00d4ff;
+            color: var(--teal);
         }
-        .gauge .unit { font-size: 0.75rem; color: #666; }
-        .gauge .label { font-size: 0.75rem; color: #888; margin-top: 2px; }
+        .gauge .unit { font-size: 0.75rem; color: var(--text-muted); }
+        .gauge .label { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
     </style>
 </head>
 <body>
