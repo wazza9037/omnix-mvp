@@ -357,6 +357,32 @@
     <input type="file" id="file-input" accept="image/*">
   </div>
 
+  <!-- Simulated Scan -->
+  <div id="sim-scan-area" style="text-align:center;margin-bottom:32px">
+    <div style="color:var(--text-muted);font-size:13px;margin-bottom:8px">Or simulate a scan without a camera:</div>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <select id="sim-device-type" style="background:var(--card-bg);color:var(--text);border:1px solid var(--card-border);border-radius:6px;padding:6px 12px;font-size:13px">
+        <option value="">Random (cycles through types)</option>
+        <option value="quadcopter_drone">Quadcopter Drone</option>
+        <option value="hexacopter_drone">Hexacopter Drone</option>
+        <option value="fixed_wing_drone">Fixed-Wing Drone</option>
+        <option value="wheeled_robot">Wheeled Rover</option>
+        <option value="tracked_robot">Tracked Robot</option>
+        <option value="robot_arm_6dof">6-DOF Robotic Arm</option>
+        <option value="humanoid_robot">Humanoid Robot</option>
+        <option value="quadruped_robot">Quadruped Robot</option>
+        <option value="hexapod_robot">Hexapod Robot</option>
+        <option value="robotic_vacuum">Robotic Vacuum</option>
+        <option value="underwater_rov">Underwater ROV</option>
+        <option value="smart_speaker">Smart Speaker</option>
+        <option value="surgical_robot">Surgical Robot</option>
+        <option value="amr_warehouse">Warehouse AMR</option>
+        <option value="collaborative_cobot">Collaborative Cobot</option>
+      </select>
+      <button class="btn" onclick="simulateScan()" style="background:var(--purple);font-size:13px;padding:6px 16px">Simulate Scan</button>
+    </div>
+  </div>
+
   <!-- Image Preview -->
   <div class="preview-container" id="preview-container">
     <div class="preview-grid">
@@ -487,6 +513,33 @@ function handleFile(file) {
   reader.readAsDataURL(file);
 }
 
+async function simulateScan() {
+  const deviceType = document.getElementById("sim-device-type").value;
+  const simArea = document.getElementById("sim-scan-area");
+
+  try {
+    const body = deviceType ? { device_type: deviceType } : {};
+    const res = await fetch("/api/vpe/simulate", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error || "Simulation failed");
+    }
+
+    const result = await res.json();
+    currentResult = result;
+    displayResults(result);
+    // Hide sim area and upload area
+    simArea.style.display = "none";
+  } catch (err) {
+    alert("Simulation failed: " + err.message);
+  }
+}
+
 async function analyzeImage(b64Data) {
   // Show loading state
   uploadArea.classList.add("analyzing");
@@ -531,10 +584,11 @@ function displayResults(result) {
   // Classification header
   const cls = result.classification;
   const icon = DEVICE_ICONS[cls.device_category] || DEVICE_ICONS.unknown;
+  const displayName = cls.generated_name || cls.description;
   document.getElementById("result-header").innerHTML = `
     <div class="device-icon">${icon}</div>
     <div>
-      <h2>${cls.description}</h2>
+      <h2>${displayName}</h2>
       <div class="confidence">${cls.device_type.replace(/_/g, " ")} &mdash; ${(cls.confidence * 100).toFixed(0)}% confidence</div>
     </div>
     <div class="processing-time">Analyzed in ${result.processing_time_ms}ms</div>

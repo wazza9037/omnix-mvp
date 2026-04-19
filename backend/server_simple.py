@@ -1431,6 +1431,27 @@ class OmnixHandler(SimpleHTTPRequestHandler):
                 traceback.print_exc()
                 self._json_response({"error": f"Analysis failed: {str(e)}"}, 500)
 
+        # ── VPE Simulated Scan ──
+
+        elif parsed.path == "/api/vpe/simulate":
+            device_type_hint = data.get("device_type")
+            try:
+                result = vpe_engine.simulate_scan(device_type_hint)
+                mesh_params = generate_mesh(
+                    result["classification"],
+                    result["image_analysis"],
+                    result["physics"],
+                )
+                result["mesh_params"] = mesh_params
+                profile = device_store.store(result, mesh_params)
+                result["profile_id"] = profile["id"]
+                result["is_active_device"] = profile["id"] == device_store.active_id
+                self._json_response(result)
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                self._json_response({"error": f"Simulated scan failed: {str(e)}"}, 500)
+
         # ── VPE Multi-Image (add image to existing profile) ──
 
         elif parsed.path == "/api/vpe/add-image":

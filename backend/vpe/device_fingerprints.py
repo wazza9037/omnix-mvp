@@ -41,13 +41,14 @@ DEVICE_FINGERPRINTS = {
         "negative": {
             "circularity": {"above": 0.8, "penalty": 3.0},
             "solidity": {"above": 0.85, "penalty": 2.5},
+            "min_rotary_count": {"above": 5, "penalty": 4.0, "reason": "too many rotors for quadcopter"},
         },
         "structural_hints": {"rotary_min": 4, "boost": 6.0},
     },
 
     "hexacopter_drone": {
         "category": "drone", "description": "Hexacopter drone with 6 rotors",
-        "required": {"has_rotary_elements": True, "min_rotary_count": 5},
+        "required": {"has_rotary_elements": True, "min_rotary_count": 5, "aspect_ratio_max": 1.8},
         "positive": {
             "aspect_ratio": {"range": (0.7, 1.4), "weight": 2.0},
             "symmetry_score": {"range": (0.6, 1.0), "weight": 2.5},
@@ -57,19 +58,21 @@ DEVICE_FINGERPRINTS = {
         "negative": {
             "circularity": {"above": 0.8, "penalty": 3.0},
             "solidity": {"above": 0.85, "penalty": 2.0},
+            "min_rotary_count": {"above": 7, "penalty": 3.0, "reason": "too many rotors for hexacopter"},
+            "min_rotary_count": {"below": 5, "penalty": 5.0, "reason": "not enough rotors for hexacopter"},
         },
-        "structural_hints": {"rotary_min": 6, "boost": 7.0},
+        "structural_hints": {"rotary_min": 6, "boost": 5.0},
     },
 
     "octocopter_drone": {
         "category": "drone", "description": "Octocopter drone with 8 rotors — heavy-lift platform",
-        "required": {"has_rotary_elements": True, "min_rotary_count": 7},
+        "required": {"has_rotary_elements": True, "min_rotary_count": 7, "aspect_ratio_max": 1.8},
         "positive": {
             "symmetry_score": {"range": (0.6, 1.0), "weight": 2.5},
             "radial_symmetry": {"range": (0.5, 1.0), "weight": 2.5},
         },
         "negative": {"circularity": {"above": 0.8, "penalty": 2.5}},
-        "structural_hints": {"rotary_min": 8, "boost": 8.0},
+        "structural_hints": {"rotary_min": 8, "boost": 6.0},
     },
 
     "fixed_wing_drone": {

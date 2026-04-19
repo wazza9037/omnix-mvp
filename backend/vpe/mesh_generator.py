@@ -32,10 +32,23 @@ def generate_mesh(classification: dict, image_analysis: dict, physics: dict) -> 
     mat_props = _material_to_3d(material_str, primary_color)
     accent_mat = _material_to_3d(material_str, secondary_color)
 
-    # Component data
+    # Component data — count from both raw and relabeled names
     components = image_analysis.get("structural", {}).get("components", [])
-    rotary_count = sum(1 for c in components if c.get("name") in ("rotor_assembly", "wheel_or_joint"))
-    linear_count = sum(1 for c in components if c.get("name") in ("arm_segment", "structural_beam"))
+    _rotary_names = {
+        "rotor_assembly", "wheel_or_joint", "rotor", "motor_hub", "wheel",
+        "caster", "joint", "servo", "brush", "propeller", "thruster",
+        "speaker_driver", "reflector", "wheel_or_track",
+    }
+    _linear_names = {
+        "arm_segment", "structural_beam", "drone_arm", "landing_gear",
+        "support_strut", "chassis_rail", "body_column", "leg_segment",
+        "leg_link", "shoulder_line", "torso_axis", "limb_segment",
+        "base_plate", "arm_segment", "link_bar",
+    }
+    rotary_count = sum(1 for c in components if c.get("name") in _rotary_names
+                       or c.get("shape") == "circle")
+    linear_count = sum(1 for c in components if c.get("name") in _linear_names
+                       or c.get("shape") == "line")
 
     generators = {
         "drone": _gen_drone,

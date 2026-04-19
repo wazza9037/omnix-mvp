@@ -24,6 +24,7 @@ class DeviceClassification:
     device_category: str
     confidence: float
     description: str
+    generated_name: str = ""
     all_scores: dict = None
     classification_reasons: list = None
 
@@ -33,6 +34,7 @@ class DeviceClassification:
             "device_category": self.device_category,
             "confidence": round(self.confidence, 3),
             "description": self.description,
+            "generated_name": self.generated_name,
             "all_scores": {k: round(v, 3) for k, v in (self.all_scores or {}).items()},
             "classification_reasons": self.classification_reasons or [],
         }
@@ -94,14 +96,362 @@ class DeviceClassifier:
         margin_conf = min(1.0, (best_score - second_score) / max(best_score, 1) * 2)
         confidence = abs_conf * 0.6 + margin_conf * 0.4
 
+        generated_name = self._generate_device_name(best_type, fp, analysis)
+
         return DeviceClassification(
             device_type=best_type,
             device_category=fp["category"],
             confidence=confidence,
             description=fp["description"],
+            generated_name=generated_name,
             all_scores=scores,
             classification_reasons=reasons.get(best_type, []),
         )
+
+    # ── Device Name Generation ──
+
+    def _generate_device_name(self, device_type: str, fingerprint: dict, analysis) -> str:
+        """Generate an accurate, descriptive name based on what was actually detected."""
+        cat = fingerprint["category"]
+        rc = analysis.rotary_count
+        lc = analysis.linear_count
+        nc = len(analysis.components)
+
+        # Determine color/size descriptors
+        color_desc = self._get_color_descriptor(analysis)
+        size_desc = self._get_size_descriptor(analysis)
+
+        prefix = f"{size_desc} {color_desc}".strip() if (size_desc or color_desc) else ""
+
+        # Category-specific naming based on actual detected features
+        if cat == "drone":
+            name = self._name_drone(device_type, rc, prefix)
+        elif cat == "ground_robot":
+            name = self._name_ground_robot(device_type, rc, prefix)
+        elif cat in ("robot_arm", "industrial"):
+            name = self._name_arm(device_type, lc, prefix)
+        elif cat == "humanoid":
+            name = self._name_humanoid(device_type, nc, prefix)
+        elif cat == "legged":
+            name = self._name_legged(device_type, lc, prefix)
+        elif cat == "home_robot":
+            name = self._name_home_robot(device_type, prefix)
+        elif cat == "service_robot":
+            name = self._name_service_robot(device_type, prefix)
+        elif cat == "warehouse":
+            name = self._name_warehouse(device_type, prefix)
+        elif cat == "medical":
+            name = self._name_medical(device_type, prefix)
+        elif cat in ("smart_light", "smart_device"):
+            name = self._name_smart_device(device_type, prefix)
+        elif cat == "marine":
+            name = self._name_marine(device_type, prefix)
+        elif cat in ("space", "extreme"):
+            name = self._name_special(device_type, prefix)
+        else:
+            name = f"{prefix} Unidentified Device".strip()
+
+        return name
+
+    def _get_color_descriptor(self, analysis) -> str:
+        """Extract dominant color as a descriptor."""
+        colors = getattr(analysis, 'dominant_colors', [])
+        if not colors:
+            return ""
+        # Use the first dominant color's name if available
+        first = colors[0] if colors else None
+        if not first:
+            return ""
+        # Try to get a name from the color
+        if isinstance(first, dict):
+            hex_val = first.get("hex", "")
+        elif hasattr(first, "hex"):
+            hex_val = first.hex
+        else:
+            return ""
+        return self._hex_to_color_name(hex_val)
+
+    def _hex_to_color_name(self, hex_val: str) -> str:
+        """Map hex color to a basic color name."""
+        if not hex_val or len(hex_val) < 7:
+            return ""
+        try:
+            r = int(hex_val[1:3], 16)
+            g = int(hex_val[3:5], 16)
+            b = int(hex_val[5:7], 16)
+        except (ValueError, IndexError):
+            return ""
+
+        brightness = (r + g + b) / 3
+        if brightness < 50:
+            return "Black"
+        if brightness > 220 and max(r, g, b) - min(r, g, b) < 30:
+            return "White"
+        if brightness > 180 and max(r, g, b) - min(r, g, b) < 30:
+            return "Gray"
+
+        # Determine hue
+        max_c = max(r, g, b)
+        if max_c == 0:
+            return "Black"
+        if r > g and r > b:
+            if g > 150:
+                return "Orange" if r > 200 else "Yellow"
+            return "Red"
+        if g > r and g > b:
+            return "Green"
+        if b > r and b > g:
+            return "Blue"
+        if r > 200 and b > 200:
+            return "Purple"
+        return ""
+
+    def _get_size_descriptor(self, analysis) -> str:
+        """Estimate size descriptor from analysis dimensions."""
+        dims = getattr(analysis, 'estimated_dimensions_cm', None)
+        if not dims or not isinstance(dims, (list, tuple)) or len(dims) < 2:
+            return ""
+        max_dim = max(dims[:2])
+        if max_dim < 10:
+            return "Small"
+        if max_dim > 60:
+            return "Large"
+        return ""
+
+    def _name_drone(self, device_type: str, rotary_count: int, prefix: str) -> str:
+        # Name based on actual rotor count
+        if rotary_count >= 8:
+            drone_type = "Octocopter"
+        elif rotary_count >= 6:
+            drone_type = "Hexacopter"
+        elif rotary_count >= 3:
+            drone_type = "Quadcopter"
+        elif "fixed_wing" in device_type:
+            drone_type = "Fixed-Wing"
+        elif "vtol" in device_type:
+            drone_type = "VTOL Hybrid"
+        elif "helicopter" in device_type or "single_rotor" in device_type:
+            drone_type = "Helicopter"
+        elif "flying_wing" in device_type:
+            drone_type = "Flying Wing"
+        elif "blimp" in device_type:
+            drone_type = "Airship"
+        elif "racing" in device_type:
+            drone_type = "Racing Quadcopter"
+        elif "nano" in device_type:
+            drone_type = "Nano Drone"
+        else:
+            drone_type = "Drone"
+
+        # Add usage context from device_type
+        usage = ""
+        if "camera" in device_type:
+            usage = "Camera "
+        elif "delivery" in device_type:
+            usage = "Delivery "
+        elif "agricultural" in device_type:
+            usage = "Agricultural "
+        elif "tethered" in device_type:
+            usage = "Tethered "
+        elif "racing" in device_type and "Racing" not in drone_type:
+            usage = "Racing "
+
+        return f"{prefix} {usage}{drone_type} Drone".strip()
+
+    def _name_ground_robot(self, device_type: str, rotary_count: int, prefix: str) -> str:
+        if "tracked" in device_type:
+            body = "Tracked Robot"
+        elif "ball" in device_type or "spherical" in device_type:
+            body = "Spherical Rolling Robot"
+        elif "car" in device_type or "autonomous_car" in device_type:
+            body = "Autonomous Vehicle"
+        elif "lawnmower" in device_type:
+            body = "Robotic Lawnmower"
+        elif rotary_count >= 6:
+            body = "Six-Wheeled Rover"
+        elif rotary_count >= 4:
+            body = "Four-Wheeled Platform"
+        elif rotary_count >= 2:
+            body = "Two-Wheeled Rover"
+        else:
+            body = "Ground Robot"
+
+        if "delivery" in device_type:
+            body = f"Delivery {body}"
+        elif "security" in device_type or "patrol" in device_type:
+            body = f"Security {body}"
+        elif "bomb" in device_type or "disposal" in device_type:
+            body = f"EOD {body}"
+        elif "mars" in device_type or "planetary" in device_type:
+            body = "Planetary Rover"
+        elif "agv" in device_type or "warehouse" in device_type:
+            body = "Warehouse AGV"
+
+        return f"{prefix} {body}".strip()
+
+    def _name_arm(self, device_type: str, linear_count: int, prefix: str) -> str:
+        # Estimate DOF from linear elements
+        dof = max(linear_count, 3)
+        if dof > 7:
+            dof = 7  # cap at realistic max
+
+        if "scara" in device_type:
+            body = "SCARA Arm"
+        elif "delta" in device_type:
+            body = "Delta Robot"
+        elif "cobot" in device_type or "collaborative" in device_type:
+            body = f"{dof}-DOF Collaborative Arm"
+        elif "gripper" in device_type:
+            body = "Robotic Gripper"
+        elif "soft_gripper" in device_type:
+            body = "Soft Robotic Gripper"
+        elif "cable" in device_type:
+            body = "Cable-Driven Arm"
+        elif "welding" in device_type:
+            body = "Welding Robot Arm"
+        elif "painting" in device_type:
+            body = "Painting Robot Arm"
+        elif "palletizing" in device_type:
+            body = "Palletizing Arm"
+        elif "cnc" in device_type or "gantry" in device_type:
+            body = "CNC Gantry Robot"
+        else:
+            body = f"{dof}-DOF Robotic Arm"
+
+        return f"{prefix} {body}".strip()
+
+    def _name_humanoid(self, device_type: str, component_count: int, prefix: str) -> str:
+        if "torso" in device_type:
+            body = "Upper-Body Humanoid"
+        elif "exoskeleton" in device_type:
+            body = "Robotic Exoskeleton"
+        elif "hand" in device_type:
+            body = "Robotic Hand"
+        else:
+            body = "Humanoid Robot"
+        return f"{prefix} {body}".strip()
+
+    def _name_legged(self, device_type: str, linear_count: int, prefix: str) -> str:
+        if "snake" in device_type or "serpent" in device_type:
+            body = "Snake Robot"
+        elif "spider" in device_type:
+            body = "Spider Robot"
+        elif "hexapod" in device_type:
+            body = "Hexapod Robot"
+        elif "quadruped" in device_type or "dog" in device_type:
+            body = "Quadruped Robot"
+        elif "biped" in device_type:
+            body = "Bipedal Walker"
+        else:
+            body = "Legged Robot"
+        return f"{prefix} {body}".strip()
+
+    def _name_home_robot(self, device_type: str, prefix: str) -> str:
+        if "vacuum" in device_type:
+            return f"{prefix} Robotic Vacuum".strip()
+        if "mop" in device_type:
+            return f"{prefix} Robotic Mop".strip()
+        if "pool" in device_type:
+            return f"{prefix} Pool Cleaning Robot".strip()
+        if "window" in device_type:
+            return f"{prefix} Window Cleaning Robot".strip()
+        if "gutter" in device_type:
+            return f"{prefix} Gutter Cleaning Robot".strip()
+        if "pet" in device_type:
+            return f"{prefix} Robot Pet".strip()
+        if "toy" in device_type:
+            return f"{prefix} Toy Robot".strip()
+        return f"{prefix} Home Robot".strip()
+
+    def _name_service_robot(self, device_type: str, prefix: str) -> str:
+        if "butler" in device_type:
+            return f"{prefix} Service Butler Robot".strip()
+        if "telepresence" in device_type:
+            return f"{prefix} Telepresence Robot".strip()
+        if "cleaning" in device_type:
+            return f"{prefix} Commercial Cleaning Robot".strip()
+        if "cooking" in device_type:
+            return f"{prefix} Cooking Robot".strip()
+        if "reception" in device_type:
+            return f"{prefix} Reception Robot".strip()
+        return f"{prefix} Service Robot".strip()
+
+    def _name_warehouse(self, device_type: str, prefix: str) -> str:
+        if "forklift" in device_type:
+            return f"{prefix} Autonomous Forklift".strip()
+        if "conveyor" in device_type:
+            return f"{prefix} Conveyor Sorting Robot".strip()
+        if "amr" in device_type:
+            return f"{prefix} Warehouse AMR".strip()
+        if "pick" in device_type or "sorting" in device_type or "bin" in device_type:
+            return f"{prefix} Pick-and-Place Robot".strip()
+        if "packaging" in device_type:
+            return f"{prefix} Packaging Robot".strip()
+        return f"{prefix} Warehouse Robot".strip()
+
+    def _name_medical(self, device_type: str, prefix: str) -> str:
+        if "surgical" in device_type:
+            return f"{prefix} Surgical Robot".strip()
+        if "rehabilitation" in device_type:
+            return f"{prefix} Rehabilitation Robot".strip()
+        if "wheelchair" in device_type:
+            return f"{prefix} Robotic Wheelchair".strip()
+        if "prosthetic" in device_type:
+            return f"{prefix} Robotic Prosthetic".strip()
+        if "disinfection" in device_type:
+            return f"{prefix} UV Disinfection Robot".strip()
+        if "pharmacy" in device_type:
+            return f"{prefix} Pharmacy Dispensing Robot".strip()
+        if "care" in device_type:
+            return f"{prefix} Care Robot".strip()
+        if "lab" in device_type:
+            return f"{prefix} Lab Automation Robot".strip()
+        return f"{prefix} Medical Robot".strip()
+
+    def _name_smart_device(self, device_type: str, prefix: str) -> str:
+        if "light" in device_type or "bulb" in device_type:
+            return f"{prefix} Smart Light".strip()
+        if "led_strip" in device_type:
+            return f"{prefix} LED Strip Controller".strip()
+        if "speaker" in device_type:
+            return f"{prefix} Smart Speaker".strip()
+        if "thermostat" in device_type:
+            return f"{prefix} Smart Thermostat".strip()
+        if "camera" in device_type:
+            return f"{prefix} Smart Camera".strip()
+        if "display" in device_type:
+            return f"{prefix} Smart Display".strip()
+        if "lock" in device_type:
+            return f"{prefix} Smart Lock".strip()
+        if "doorbell" in device_type:
+            return f"{prefix} Smart Doorbell".strip()
+        if "plug" in device_type:
+            return f"{prefix} Smart Plug".strip()
+        if "switch" in device_type:
+            return f"{prefix} Smart Switch".strip()
+        return f"{prefix} Smart Device".strip()
+
+    def _name_marine(self, device_type: str, prefix: str) -> str:
+        if "rov" in device_type:
+            return f"{prefix} Underwater ROV".strip()
+        if "boat" in device_type:
+            return f"{prefix} Autonomous Boat".strip()
+        if "glider" in device_type:
+            return f"{prefix} Underwater Glider".strip()
+        if "fish" in device_type:
+            return f"{prefix} Robotic Fish".strip()
+        return f"{prefix} Marine Robot".strip()
+
+    def _name_special(self, device_type: str, prefix: str) -> str:
+        if "space_rover" in device_type:
+            return f"{prefix} Planetary Rover".strip()
+        if "satellite" in device_type:
+            return f"{prefix} Satellite Servicing Robot".strip()
+        if "mining" in device_type:
+            return f"{prefix} Mining Robot".strip()
+        if "firefighting" in device_type:
+            return f"{prefix} Firefighting Robot".strip()
+        return f"{prefix} Specialized Robot".strip()
 
     # ── Required Features Gate ──
 

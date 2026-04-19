@@ -9897,7 +9897,7 @@ function swarmRenderGroups() {
 function swarmRenderAvailableDevices() {
   const el = document.getElementById('swarm-available-devices');
   if (!el) return;
-  const devList = Object.values(devices);
+  const devList = Object.values(simDevices);
   if (devList.length === 0) {
     el.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:8px">No devices. Add devices in the Studio first.</div>';
     return;

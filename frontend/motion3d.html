@@ -1101,7 +1101,7 @@ function showVpeDeviceInViewer(profile) {
   const imgs = profile.image_count || 1;
 
   panel.innerHTML = `
-    <div class="dip-title">${icon} ${profile.description}</div>
+    <div class="dip-title">${icon} ${profile.name || profile.description}</div>
     <div class="dip-sub">${profile.device_type.replace(/_/g, ' ')} &middot; ${profile.material.replace(/_/g, ' ')}</div>
     <div class="dip-stats">
       <div class="dip-stat"><div class="num" style="color:var(--teal)">${conf}%</div><div class="lbl">Confidence</div></div>
@@ -1318,7 +1318,7 @@ function renderVpeDeviceList() {
     return `
       <div class="device-card vpe-device ${isActive ? 'active' : ''}"
            onclick="selectVpeDevice('${p.id}')">
-        <div class="name">${icon} ${p.description} <span class="vpe-badge">VPE</span></div>
+        <div class="name">${icon} ${p.name || p.description} <span class="vpe-badge">VPE</span></div>
         <div class="type">${p.device_type.replace(/_/g, ' ')} &middot; ${((p.confidence || 0) * 100).toFixed(0)}% &middot; ${p.image_count} img</div>
       </div>
     `;

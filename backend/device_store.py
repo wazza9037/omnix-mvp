@@ -29,11 +29,17 @@ class DeviceStore:
         dtype = vpe_result["classification"]["device_type"]
         desc = vpe_result["classification"]["description"]
 
-        # Generate a friendly default name: "Scanned Drone #3"
-        cat_label = cat.replace("_", " ").title() if cat and cat != "unknown" else "Device"
-        same_cat_count = sum(1 for p in self.profiles.values()
-                             if p.get("device_category") == cat) + 1
-        default_name = f"Scanned {cat_label} #{same_cat_count}"
+        # Use the VPE-generated descriptive name if available, otherwise fallback
+        generated_name = vpe_result["classification"].get("generated_name", "")
+        if generated_name:
+            same_cat_count = sum(1 for p in self.profiles.values()
+                                 if p.get("device_category") == cat) + 1
+            default_name = f"{generated_name} #{same_cat_count}" if same_cat_count > 1 else generated_name
+        else:
+            cat_label = cat.replace("_", " ").title() if cat and cat != "unknown" else "Device"
+            same_cat_count = sum(1 for p in self.profiles.values()
+                                 if p.get("device_category") == cat) + 1
+            default_name = f"Scanned {cat_label} #{same_cat_count}"
 
         profile = {
             "id": profile_id,

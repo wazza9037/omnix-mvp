@@ -89,12 +89,51 @@ def _relabel_components_for_category(image_analysis, category: str):
                 comp.name = line_map[raw]
 
 
+class _SimulatedAnalysis:
+    """Minimal analysis object for simulated scans (name generation only)."""
+    def __init__(self, device_type, category):
+        self.rotary_count = {"drone": 4, "ground_robot": 4, "marine": 2}.get(category, 0)
+        self.linear_count = {"robot_arm": 5, "industrial": 5, "legged": 6, "humanoid": 8}.get(category, 0)
+        self.components = [None] * max(self.rotary_count, self.linear_count, 3)
+        self.dominant_colors = []
+        self.estimated_dimensions_cm = [30, 30, 15]
+        # Set specific rotary counts for known drone types
+        if "hexacopter" in device_type:
+            self.rotary_count = 6
+        elif "octocopter" in device_type:
+            self.rotary_count = 8
+        elif "quadcopter" in device_type or "racing" in device_type:
+            self.rotary_count = 4
+        elif "fixed_wing" in device_type or "flying_wing" in device_type or "blimp" in device_type:
+            self.rotary_count = 0
+
+
+_SIMULATED_DEVICE_TYPES = [
+    ("quadcopter_drone", "drone"),
+    ("wheeled_robot", "ground_robot"),
+    ("robot_arm_6dof", "robot_arm"),
+    ("humanoid_robot", "humanoid"),
+    ("hexapod_robot", "legged"),
+    ("robotic_vacuum", "home_robot"),
+    ("underwater_rov", "marine"),
+    ("smart_speaker", "smart_device"),
+    ("surgical_robot", "medical"),
+    ("amr_warehouse", "warehouse"),
+    ("hexacopter_drone", "drone"),
+    ("tracked_robot", "ground_robot"),
+    ("quadruped_robot", "legged"),
+    ("fixed_wing_drone", "drone"),
+    ("collaborative_cobot", "robot_arm"),
+]
+
+
 class VisualPhysicsEngine:
     def __init__(self):
         self.image_analyzer = ImageAnalyzer()
         self.device_classifier = DeviceClassifier()
         self.physics_engine = PhysicsEngine()
         self.analysis_count = 0
+        self._sim_index = 0
 
     def analyze_image(self, image_bytes: bytes) -> dict:
         total_start = time.time()
@@ -142,11 +181,95 @@ class VisualPhysicsEngine:
         with open(filepath, "rb") as f:
             return self.analyze_image(f.read())
 
+    def simulate_scan(self, device_type_hint: str = None) -> dict:
+        """
+        Generate a simulated VPE scan result without a real image.
+        Cycles through different device types each call, or uses the hint if provided.
+        """
+        from .device_fingerprints import DEVICE_FINGERPRINTS
+
+        if device_type_hint and device_type_hint in DEVICE_FINGERPRINTS:
+            dtype = device_type_hint
+            fp = DEVICE_FINGERPRINTS[dtype]
+            cat = fp["category"]
+        else:
+            # Cycle through simulated device types
+            dtype, cat = _SIMULATED_DEVICE_TYPES[self._sim_index % len(_SIMULATED_DEVICE_TYPES)]
+            fp = DEVICE_FINGERPRINTS[dtype]
+            self._sim_index += 1
+
+        self.analysis_count += 1
+
+        # Build a synthetic classification
+        generated_name = self.device_classifier._generate_device_name(
+            dtype, fp, _SimulatedAnalysis(dtype, cat)
+        )
+
+        classification_dict = {
+            "device_type": dtype,
+            "device_category": cat,
+            "confidence": 0.85,
+            "description": fp["description"],
+            "generated_name": generated_name,
+            "all_scores": {dtype: 10.0},
+            "classification_reasons": ["Simulated scan — no image analysis performed"],
+        }
+
+        # Minimal image analysis for mesh generation
+        image_analysis_dict = {
+            "geometry": {"estimated_dimensions_cm": [30, 30, 15]},
+            "color_profile": {
+                "estimated_material": "matte_plastic",
+                "dominant_colors": [
+                    {"hex": "#333333", "name": "dark gray"},
+                    {"hex": "#666666", "name": "gray"},
+                ],
+            },
+            "structural": {"components": []},
+        }
+
+        # Minimal physics
+        physics_dict = {
+            "physical_properties": {
+                "estimated_mass_kg": 1.0,
+                "drag_coefficient": 0.5,
+                "structural_integrity": 0.8,
+                "center_of_gravity": {"x": 0, "y": 0, "z": 0},
+                "estimated_inertia": {"Ixx": 0.01, "Iyy": 0.01, "Izz": 0.01},
+            },
+            "scores": {"overall": 70, "efficiency": 65, "stability": 75, "maneuverability": 60},
+            "operational_params": {},
+            "optimizations": [],
+        }
+
+        return {
+            "analysis_id": f"vpe-sim-{self.analysis_count:04d}",
+            "processing_time_ms": 0,
+            "stage_times_ms": {},
+            "pass_times_ms": {},
+            "classification": classification_dict,
+            "image_analysis": image_analysis_dict,
+            "physics": physics_dict,
+            "summary": {
+                "device": fp["description"],
+                "confidence": "85%",
+                "overall_score": "70/100",
+                "key_findings": [
+                    f"Simulated scan: {generated_name}",
+                    f"Category: {cat}",
+                    "No image analysis — using simulated device profile",
+                ],
+                "top_recommendations": [],
+            },
+            "simulated": True,
+        }
+
     def _summary(self, cls, phys, img, total_ms) -> dict:
         top_opts = phys.optimizations[:3]
 
+        device_label = cls.generated_name if cls.generated_name else cls.description
         findings = [
-            f"Identified as: {cls.description} ({cls.confidence:.0%} confidence)",
+            f"Identified as: {device_label} ({cls.confidence:.0%} confidence)",
             f"Estimated mass: {phys.estimated_mass_kg:.3f} kg",
             f"Material: {img.estimated_material}",
             f"Structural integrity: {phys.structural_integrity_score:.0%}",

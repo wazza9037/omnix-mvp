@@ -78,7 +78,7 @@ class Settings:
     # ── Security ──
     cors_origins: str = _env("OMNIX_CORS_ORIGINS", "*")
     rate_limit_auth: int = _env_int("OMNIX_RATE_LIMIT_AUTH", 10)  # per minute
-    rate_limit_api: int = _env_int("OMNIX_RATE_LIMIT_API", 100)   # per minute
+    rate_limit_api: int = _env_int("OMNIX_RATE_LIMIT_API", 1000)  # per minute
     max_request_size: int = _env_int("OMNIX_MAX_REQUEST_SIZE", 20 * 1024 * 1024)  # 20MB
 
     # ── Telemetry / polling ──

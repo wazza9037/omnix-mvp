@@ -28,14 +28,14 @@ class RateLimiter:
     Token-bucket rate limiter.
 
     Default: 10 requests per minute on auth endpoints,
-    100 requests per minute on general API.
+    1000 requests per minute on general API.
     """
 
     def __init__(
         self,
-        auth_rate: int = 10,       # max requests per window
-        auth_window: float = 60.0, # window in seconds
-        api_rate: int = 100,
+        auth_rate: int = 10,        # max requests per window
+        auth_window: float = 60.0,  # window in seconds
+        api_rate: int = 1000,
         api_window: float = 60.0,
     ):
         self.auth_rate = auth_rate
