@@ -41,7 +41,99 @@ class DeviceClassification:
 
 
 class DeviceClassifier:
-    """Classify images into one of 100 device types using fingerprint matching."""
+    """Classify images into one of 100 device types using fingerprint matching
+    supplemented by a robust aspect-ratio heuristic."""
+
+    # ── Aspect-ratio heuristic mapping ──
+    # PRIMARY: image aspect ratio → likely category + default type
+    _HEURISTIC_MAP = [
+        # (ar_min, ar_max, category, device_type, description, base_confidence)
+        (2.5, 99.0, "drone", "fixed_wing_drone", "Fixed-wing aerial vehicle", 0.70),
+        (1.5, 2.5,  "ground_robot", "wheeled_robot", "Wheeled ground platform", 0.65),
+        (0.7, 1.5,  "drone", "quadcopter_drone", "Multirotor aerial drone", 0.60),
+        (0.5, 0.7,  "robot_arm", "robot_arm_6dof", "Articulated robotic arm", 0.65),
+        (0.0, 0.5,  "humanoid", "humanoid_robot", "Humanoid robot", 0.65),
+    ]
+
+    def _heuristic_classify(self, analysis) -> tuple:
+        """Aspect-ratio + edge density + color heuristic classification.
+
+        Returns (device_type, category, description, confidence, reasons).
+        """
+        ar = getattr(analysis, "aspect_ratio", 1.0)
+        edge_density = getattr(analysis, "edge_density", 0.0)
+        dark_ratio = getattr(analysis, "dark_ratio", 0.0)
+        rotary_count = getattr(analysis, "rotary_count", 0)
+        linear_count = getattr(analysis, "linear_count", 0)
+        circularity = getattr(analysis, "circularity", 0.5)
+        solidity = getattr(analysis, "solidity", 0.5)
+        nc = len(getattr(analysis, "components", []))
+
+        reasons = []
+
+        # Step 1: PRIMARY — aspect ratio
+        cat = "unknown"
+        dtype = "unknown_device"
+        desc = "Unknown device"
+        conf = 0.5
+
+        for ar_min, ar_max, h_cat, h_dtype, h_desc, h_conf in self._HEURISTIC_MAP:
+            if ar_min <= ar < ar_max:
+                cat = h_cat
+                dtype = h_dtype
+                desc = h_desc
+                conf = h_conf
+                reasons.append(f"Aspect ratio {ar:.2f} → {cat}")
+                break
+
+        # Step 2: SECONDARY — structural evidence can refine the category
+        if rotary_count >= 4 and ar >= 0.6 and ar <= 1.8:
+            cat = "drone"
+            dtype = "quadcopter_drone" if rotary_count <= 5 else (
+                "hexacopter_drone" if rotary_count <= 7 else "octocopter_drone"
+            )
+            desc = "Multirotor aerial drone"
+            conf = min(0.80, conf + 0.10)
+            reasons.append(f"{rotary_count} rotary elements → multirotor drone")
+        elif rotary_count >= 2 and ar > 1.2 and linear_count > 3:
+            cat = "ground_robot"
+            dtype = "wheeled_robot"
+            desc = "Wheeled ground robot"
+            conf = min(0.80, conf + 0.08)
+            reasons.append(f"{rotary_count} wheels + {linear_count} linear → ground robot")
+        elif linear_count >= 4 and ar < 0.8 and rotary_count < 2:
+            cat = "robot_arm"
+            dtype = "robot_arm_6dof"
+            desc = "Articulated robotic arm"
+            conf = min(0.80, conf + 0.10)
+            reasons.append(f"{linear_count} linear elements, tall shape → robot arm")
+
+        # Step 3: TERTIARY — edge density and color refine confidence
+        if edge_density > 0.15:
+            # High complexity → probably a complex device
+            if cat in ("drone", "humanoid", "legged"):
+                conf = min(0.80, conf + 0.05)
+                reasons.append(f"High edge density {edge_density:.3f} → complex device")
+        elif edge_density < 0.03:
+            # Very low complexity → simple device
+            if cat not in ("smart_light", "smart_device"):
+                # Might be a simple smart device instead
+                if solidity > 0.80 and circularity > 0.5 and nc < 3:
+                    cat = "smart_device"
+                    dtype = "smart_speaker"
+                    desc = "Smart device"
+                    conf = 0.60
+                    reasons.append(f"Low edge density + high solidity → smart device")
+
+        # Dark/metallic images are likely real device photos
+        if dark_ratio > 0.3:
+            conf = min(0.80, conf + 0.03)
+            reasons.append(f"Dark image (ratio {dark_ratio:.2f}) → likely real device photo")
+
+        # Clamp confidence to honest range
+        conf = max(0.45, min(0.80, conf))
+
+        return dtype, cat, desc, conf, reasons
 
     def classify(self, analysis) -> DeviceClassification:
         scores = {}
@@ -70,42 +162,106 @@ class DeviceClassifier:
             scores[device_type] = total
             reasons[device_type] = all_reasons
 
-        if not scores or max(scores.values()) == 0:
-            return DeviceClassification(
-                device_type="unknown_device",
-                device_category="unknown",
-                confidence=0.0,
-                description="Could not classify — try a clearer photo with the device centered.",
-                all_scores=scores,
-                classification_reasons=["No device type matched the visual features"],
+        # ── Heuristic fallback / blend ──
+        h_dtype, h_cat, h_desc, h_conf, h_reasons = self._heuristic_classify(analysis)
+
+        # Find the best fingerprint match
+        fp_best_type = None
+        fp_best_score = 0
+        fp_second_score = 0
+        fp_confidence = 0.0
+
+        if scores and max(scores.values()) > 0:
+            ranked = sorted(scores.items(), key=lambda x: -x[1])
+            fp_best_type, fp_best_score = ranked[0]
+            fp_second_score = ranked[1][1] if len(ranked) > 1 else 0
+
+            fp_fp = DEVICE_FINGERPRINTS[fp_best_type]
+            max_possible = sum(
+                f.get("weight", 2.0) for f in fp_fp.get("positive", {}).values()
+                if isinstance(f, dict)
             )
+            abs_conf = min(1.0, fp_best_score / max(max_possible * 0.6, 1))
+            margin_conf = min(1.0, (fp_best_score - fp_second_score) / max(fp_best_score, 1) * 2)
+            fp_confidence = abs_conf * 0.6 + margin_conf * 0.4
 
-        # Rank all types
-        ranked = sorted(scores.items(), key=lambda x: -x[1])
-        best_type, best_score = ranked[0]
-        second_score = ranked[1][1] if len(ranked) > 1 else 0
-
-        fp = DEVICE_FINGERPRINTS[best_type]
-
-        # Confidence: absolute score vs. max possible, plus margin over runner-up
-        max_possible = sum(
-            f.get("weight", 2.0) for f in fp.get("positive", {}).values()
-            if isinstance(f, dict)
+        # Decision: use fingerprint result if it has a clear winner (conf > 0.5 AND
+        # good margin), otherwise use heuristic, otherwise blend.
+        fp_has_clear_winner = (
+            fp_best_type is not None
+            and fp_confidence > 0.50
+            and fp_best_score > fp_second_score * 1.3
         )
-        abs_conf = min(1.0, best_score / max(max_possible * 0.6, 1))
-        margin_conf = min(1.0, (best_score - second_score) / max(best_score, 1) * 2)
-        confidence = abs_conf * 0.6 + margin_conf * 0.4
 
-        generated_name = self._generate_device_name(best_type, fp, analysis)
+        # If fingerprint and heuristic agree on category, boost confidence
+        fp_cat = DEVICE_FINGERPRINTS[fp_best_type]["category"] if fp_best_type else None
+        categories_agree = fp_cat == h_cat
+
+        if fp_has_clear_winner and categories_agree:
+            # Strong agreement — use fingerprint type with boosted confidence
+            best_type = fp_best_type
+            fp = DEVICE_FINGERPRINTS[best_type]
+            confidence = min(0.85, fp_confidence * 0.6 + h_conf * 0.4 + 0.05)
+            final_reasons = reasons.get(best_type, []) + [
+                f"Heuristic agrees: {h_cat} (AR={getattr(analysis, 'aspect_ratio', 0):.2f})"
+            ]
+        elif fp_has_clear_winner:
+            # Fingerprint is confident but heuristic disagrees — use fingerprint
+            # but slightly lower confidence
+            best_type = fp_best_type
+            fp = DEVICE_FINGERPRINTS[best_type]
+            confidence = min(0.75, fp_confidence * 0.8)
+            final_reasons = reasons.get(best_type, [])
+        elif h_conf > 0.55:
+            # Fingerprint is weak — rely on heuristic
+            best_type = h_dtype
+            if best_type in DEVICE_FINGERPRINTS:
+                fp = DEVICE_FINGERPRINTS[best_type]
+            else:
+                # Find any fingerprint in the heuristic category
+                fp = None
+                for dt, fpp in DEVICE_FINGERPRINTS.items():
+                    if fpp["category"] == h_cat:
+                        best_type = dt
+                        fp = fpp
+                        break
+                if fp is None:
+                    best_type = h_dtype
+                    fp = {"category": h_cat, "description": h_desc}
+            confidence = h_conf
+            final_reasons = h_reasons
+        else:
+            # Both weak — use fingerprint if available, else heuristic
+            if fp_best_type:
+                best_type = fp_best_type
+                fp = DEVICE_FINGERPRINTS[best_type]
+                confidence = max(fp_confidence, h_conf) * 0.8
+                final_reasons = reasons.get(best_type, []) + h_reasons
+            else:
+                return DeviceClassification(
+                    device_type="unknown_device",
+                    device_category="unknown",
+                    confidence=0.0,
+                    description="Could not classify — try a clearer photo.",
+                    all_scores=scores,
+                    classification_reasons=["No device type matched"],
+                )
+
+        # Clamp final confidence to honest range
+        confidence = max(0.35, min(0.85, confidence))
+
+        generated_name = self._generate_device_name(
+            best_type, fp, analysis
+        )
 
         return DeviceClassification(
             device_type=best_type,
             device_category=fp["category"],
             confidence=confidence,
-            description=fp["description"],
+            description=fp.get("description", h_desc),
             generated_name=generated_name,
             all_scores=scores,
-            classification_reasons=reasons.get(best_type, []),
+            classification_reasons=final_reasons,
         )
 
     # ── Device Name Generation ──

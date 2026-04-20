@@ -747,8 +747,8 @@ async function goToMotion3D() {
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({ profile_id: currentResult.profile_id }),
   });
-  // Navigate back to the unified Studio (Control Panel + 3D viewer)
-  window.location.href = "/";
+  // Navigate back to the unified Studio with the profile ID so it auto-selects
+  window.location.href = "/?vpe=" + encodeURIComponent(currentResult.profile_id);
 }
 
 // ─── Multi-Image Support ───

@@ -18,7 +18,12 @@ def generate_mesh(classification: dict, image_analysis: dict, physics: dict) -> 
     dtype = classification["device_type"]
 
     # Extract key dimensions (in meters for Three.js scene)
-    dims_cm = image_analysis.get("geometry", {}).get("estimated_dimensions_cm", [20, 20, 10])
+    # Check both "size" (from real image analysis) and "geometry" (from simulated scans)
+    dims_cm = (
+        image_analysis.get("size", {}).get("estimated_dimensions_cm")
+        or image_analysis.get("geometry", {}).get("estimated_dimensions_cm")
+        or [20, 20, 10]
+    )
     # Scale to reasonable 3D scene size (1 unit = ~10cm)
     sx = dims_cm[0] / 10
     sy = dims_cm[1] / 10

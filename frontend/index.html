@@ -8365,16 +8365,33 @@ async function bootstrap() {
   renderWorkspaceTabs();
   renderViewSwitcher();
 
-  // Auto-select a device: prefer first sim (opens as a tab);
-  // if none, show the first VPE device via the legacy rpanel path.
-  if (!activeTabId) {
-    const firstSim = Object.keys(simDevices)[0];
-    if (firstSim) {
-      openTab(firstSim);
-    } else if (vpeProfiles.length > 0) {
-      selected = { kind: 'vpe', id: vpeProfiles[0].id };
+  // Check if we arrived from VPE with a specific profile to show
+  const urlParams = new URLSearchParams(window.location.search);
+  const vpeFromScan = urlParams.get('vpe');
+
+  if (vpeFromScan && vpeProfiles.find(p => p.id === vpeFromScan)) {
+    // Arrived from VPE scan — show the scanned device immediately
+    selected = { kind: 'vpe', id: vpeFromScan };
+    showDeviceInViewer();
+    renderAll();
+    // Clean up URL without reload
+    window.history.replaceState({}, '', '/');
+  } else if (!activeTabId) {
+    // Auto-select: prefer VPE device marked active, then first sim, then first VPE
+    const activeVpe = vpeProfiles.find(p => p.is_active);
+    if (activeVpe) {
+      selected = { kind: 'vpe', id: activeVpe.id };
       showDeviceInViewer();
       renderAll();
+    } else {
+      const firstSim = Object.keys(simDevices)[0];
+      if (firstSim) {
+        openTab(firstSim);
+      } else if (vpeProfiles.length > 0) {
+        selected = { kind: 'vpe', id: vpeProfiles[0].id };
+        showDeviceInViewer();
+        renderAll();
+      }
     }
   }
 
