@@ -231,6 +231,12 @@ from omnix.swarm import SwarmCoordinator, FORMATIONS, MISSION_TEMPLATES
 # Import AI Enhancement module
 from omnix.ai import ModelRegistry, AIInferenceEngine, RobotKnowledgeBase, RobotEnhancer
 
+# Import Fleet Management
+from omnix.fleet import FleetManager, LocationManager, FleetAnalytics, FleetScheduler
+
+# Import Environment system
+from omnix.environments.registry import get_registry as get_env_registry
+
 # Marketplace store — session-scoped, seeded on first access
 marketplace_store = MarketplaceStore()
 marketplace_installer = Installer(marketplace_store)
@@ -263,6 +269,12 @@ ai_model_registry = ModelRegistry()
 ai_inference_engine = AIInferenceEngine(ai_model_registry)
 ai_knowledge_base = RobotKnowledgeBase()
 ai_enhancer = RobotEnhancer(ai_model_registry, ai_inference_engine, ai_knowledge_base)
+
+# Fleet Management — session-scoped
+fleet_manager = FleetManager()
+fleet_locations = LocationManager()
+fleet_analytics = FleetAnalytics()
+fleet_scheduler = FleetScheduler()
 
 # WebSocket server (initialized in main() if enabled)
 ws_server = None
@@ -741,6 +753,21 @@ class OmnixHandler(SimpleHTTPRequestHandler):
             self._json_response({"error": "Bad workspace path"}, 400)
 
         # ── Simulation Endpoints (GET) ──
+
+        # ── Environment endpoints (GET) ──
+
+        elif parsed.path == "/api/environments":
+            registry = get_env_registry()
+            self._json_response({"environments": registry.list_environments()})
+
+        elif parsed.path.startswith("/api/environments/"):
+            env_id = parsed.path.split("/api/environments/")[1].strip("/")
+            registry = get_env_registry()
+            env = registry.get_environment(env_id)
+            if env:
+                self._json_response({"environment": env})
+            else:
+                raise NotFoundError(f"Environment not found: {env_id}")
 
         elif parsed.path == "/api/simulation/scenarios":
             qs = parse_qs(parsed.query)
@@ -1300,6 +1327,67 @@ class OmnixHandler(SimpleHTTPRequestHandler):
                 "description_ai": "",
                 "mesh_suggestions": [],
             })
+            return
+
+        # ── Fleet Management GET routes ────────────────────────
+
+        elif parsed.path == "/api/fleet/overview":
+            overview = fleet_manager.get_fleet_overview(devices)
+            self._json_response(overview)
+            return
+
+        elif parsed.path == "/api/fleet/devices":
+            summaries = []
+            for did, dev in devices.items():
+                s = fleet_manager.get_device_summary(dev)
+                # Merge location info
+                loc = fleet_locations.get_device_location(did)
+                s["location"] = loc
+                summaries.append(s)
+            self._json_response({"devices": summaries, "total": len(summaries)})
+            return
+
+        elif parsed.path == "/api/fleet/locations":
+            locs = fleet_locations.list_locations()
+            self._json_response({"locations": locs, "total": len(locs)})
+            return
+
+        elif parsed.path == "/api/fleet/analytics":
+            analytics = fleet_analytics.get_fleet_analytics(list(devices.keys()))
+            self._json_response(analytics)
+            return
+
+        elif parsed.path.startswith("/api/fleet/analytics/"):
+            device_id = parsed.path.split("/api/fleet/analytics/")[1]
+            if device_id not in devices:
+                raise NotFoundError(f"Device {device_id} not found")
+            analytics = fleet_analytics.get_device_analytics(device_id)
+            self._json_response(analytics)
+            return
+
+        elif parsed.path == "/api/fleet/schedule":
+            qs = parse_qs(parsed.query)
+            status = qs.get("status", [None])[0]
+            device_id = qs.get("device_id", [None])[0]
+            tasks = fleet_scheduler.list_tasks(status=status, device_id=device_id)
+            summary = fleet_scheduler.get_queue_summary()
+            self._json_response({"tasks": tasks, "queue": summary})
+            return
+
+        elif parsed.path == "/api/fleet/events":
+            qs = parse_qs(parsed.query)
+            device_id = qs.get("device_id", [None])[0]
+            event_type = qs.get("type", [None])[0]
+            severity = qs.get("severity", [None])[0]
+            limit = int(qs.get("limit", [50])[0])
+            events = fleet_manager.get_events(device_id, event_type, severity, limit)
+            self._json_response({"events": events, "total": len(events)})
+            return
+
+        elif parsed.path == "/api/fleet/alerts":
+            active_only = parse_qs(parsed.query).get("active", ["true"])[0] == "true"
+            alerts = fleet_manager.get_alerts(active_only)
+            self._json_response({"alerts": alerts, "total": len(alerts)})
             return
 
         else:
@@ -1894,6 +1982,28 @@ class OmnixHandler(SimpleHTTPRequestHandler):
                     self._json_response({"error": "No sketch path for this firmware"}, 400)
             else:
                 self._json_response({"error": "Unknown OTA firmware action"}, 400)
+
+        # ── Environment Endpoints (POST) ──
+
+        elif parsed.path == "/api/environments/custom":
+            registry = get_env_registry()
+            env = registry.create_custom(data)
+            self._json_response({"environment": env}, 201)
+
+        elif parsed.path.startswith("/api/workspaces/") and parsed.path.endswith("/environment"):
+            parts = parsed.path.split("/")
+            device_id = parts[3]
+            env_id = data.get("environment_id")
+            registry = get_env_registry()
+            env = registry.get_environment(env_id)
+            if not env:
+                raise NotFoundError(f"Environment not found: {env_id}")
+            # Store environment_id in workspace
+            dev = devices.get(device_id)
+            if dev:
+                ws = workspace_store.ensure(dev)
+                ws["environment_id"] = env_id
+            self._json_response({"environment": env, "workspace_id": device_id})
 
         # ── Workspace Endpoints (POST) ──
 
@@ -2800,6 +2910,119 @@ class OmnixHandler(SimpleHTTPRequestHandler):
             self._json_response({"ok": True, "provider": provider})
             return
 
+        # ── Fleet Management POST routes ────────────────────────
+
+        elif parsed.path == "/api/fleet/locations":
+            name = data.get("name", "")
+            if not name:
+                raise ValidationError("name is required")
+            loc_id = data.get("id")
+            if loc_id:
+                result = fleet_locations.update_location(
+                    loc_id, name=name,
+                    lat=data.get("lat", 0), lng=data.get("lng", 0),
+                    address=data.get("address", ""),
+                    description=data.get("description", ""),
+                    map_x=data.get("map_x", 0), map_y=data.get("map_y", 0),
+                    color=data.get("color", "#00B4D8"),
+                )
+                if not result:
+                    raise NotFoundError(f"Location {loc_id} not found")
+                self._json_response({"ok": True, "location": result})
+            else:
+                result = fleet_locations.create_location(
+                    name=name,
+                    lat=data.get("lat", 0), lng=data.get("lng", 0),
+                    address=data.get("address", ""),
+                    description=data.get("description", ""),
+                    map_x=data.get("map_x", 0), map_y=data.get("map_y", 0),
+                    color=data.get("color", "#00B4D8"),
+                )
+                self._json_response({"ok": True, "location": result}, 201)
+            return
+
+        elif parsed.path.startswith("/api/fleet/locations/") and parsed.path.endswith("/assign"):
+            parts = parsed.path.split("/")
+            loc_id = parts[4]  # /api/fleet/locations/<id>/assign
+            device_id = data.get("device_id", "")
+            if not device_id:
+                raise ValidationError("device_id is required")
+            if device_id not in devices:
+                raise NotFoundError(f"Device {device_id} not found")
+            ok = fleet_locations.assign_device(loc_id, device_id)
+            if not ok:
+                raise NotFoundError(f"Location {loc_id} not found")
+            fleet_manager.record_event(
+                "device_assigned", f"Device assigned to location",
+                device_id, "info", {"location_id": loc_id}
+            )
+            self._json_response({"ok": True})
+            return
+
+        elif parsed.path == "/api/fleet/schedule":
+            name = data.get("name", "")
+            task_type = data.get("task_type", "mission")
+            command = data.get("command", "")
+            if not name or not command:
+                raise ValidationError("name and command are required")
+            result = fleet_scheduler.schedule_task(
+                name=name,
+                task_type=task_type,
+                command=command,
+                params=data.get("params", {}),
+                priority=data.get("priority", 2),
+                device_id=data.get("device_id"),
+                required_capabilities=data.get("required_capabilities", []),
+                scheduled_at=data.get("scheduled_at"),
+            )
+            fleet_manager.record_event(
+                "task_scheduled", f"Task '{name}' scheduled",
+                data.get("device_id"), "info", {"task_id": result["id"]}
+            )
+            self._json_response({"ok": True, "task": result}, 201)
+            return
+
+        elif parsed.path == "/api/fleet/schedule/auto-assign":
+            assigned = fleet_scheduler.auto_assign(devices)
+            self._json_response({"ok": True, "assigned": assigned, "count": len(assigned)})
+            return
+
+        elif parsed.path.startswith("/api/fleet/schedule/") and "/complete" in parsed.path:
+            parts = parsed.path.split("/")
+            task_id = parts[4]  # /api/fleet/schedule/<id>/complete
+            result = fleet_scheduler.complete_task(task_id, data.get("result"))
+            if not result:
+                raise NotFoundError(f"Task {task_id} not found")
+            self._json_response({"ok": True, "task": result})
+            return
+
+        elif parsed.path.startswith("/api/fleet/schedule/") and "/cancel" in parsed.path:
+            parts = parsed.path.split("/")
+            task_id = parts[4]
+            ok = fleet_scheduler.cancel_task(task_id)
+            if not ok:
+                raise NotFoundError(f"Task {task_id} not found or not cancellable")
+            self._json_response({"ok": True})
+            return
+
+        elif parsed.path == "/api/fleet/alerts/acknowledge":
+            alert_id = data.get("alert_id", "")
+            if not alert_id:
+                raise ValidationError("alert_id is required")
+            ok = fleet_manager.acknowledge_alert(alert_id)
+            self._json_response({"ok": ok})
+            return
+
+        elif parsed.path == "/api/fleet/seed-demo":
+            # Seed demo data for analytics and scheduler
+            dids = list(devices.keys())
+            fleet_analytics.seed_demo_data(dids)
+            fleet_scheduler.seed_demo_tasks(dids)
+            fleet_locations.auto_assign_devices(devices)
+            fleet_manager.record_event("system", "Demo data seeded for fleet dashboard")
+            self._json_response({"ok": True, "message": "Demo data seeded"})
+            return
+
         else:
             self._json_response({"error": "Not found"}, 404)
 
@@ -3023,7 +3246,15 @@ def main():
     print(f"  Auth:            {'Enabled (guest mode)' if settings.guest_mode else 'Enabled (login required)'}")
     print(f"  Database:        {settings.db_backend}" + (f" ({settings.db_path})" if settings.db_backend == "sqlite" else ""))
     print(f"  WebSocket:       {'ws://localhost:' + str(settings.ws_port) if ws_started else 'Disabled (polling fallback)'}")
+    # ── Initialize Fleet Management ──
+    fleet_locations.auto_assign_devices(devices)
+    fleet_analytics.seed_demo_data(list(devices.keys()))
+    fleet_scheduler.seed_demo_tasks(list(devices.keys()))
+    log.info("fleet management initialized: %d devices across %d locations",
+             len(devices), len(fleet_locations.locations))
+
     print(f"  AI Enhancement:  {'Available' if ai_model_registry else 'Disabled'}")
+    print(f"  Fleet Dashboard: http://localhost:{port}/fleet.html")
     print(f"  Environment:     {settings.env}")
     print()
     print("  Simulated devices:")

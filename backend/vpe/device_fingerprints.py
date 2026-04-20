@@ -81,8 +81,8 @@ DEVICE_FINGERPRINTS = {
         "positive": {
             "aspect_ratio": {"range": (1.6, 5.0), "weight": 3.5},
             "symmetry_score": {"range": (0.5, 1.0), "weight": 2.0},
-            "elongation": {"range": (0.15, 0.45), "weight": 2.5},
-            "solidity": {"range": (0.4, 0.8), "weight": 1.5},
+            "elongation": {"range": (0.15, 0.55), "weight": 2.5},
+            "solidity": {"range": (0.4, 1.0), "weight": 1.5},
         },
         "negative": {
             "has_rotary_elements": {"equals": True, "penalty": 1.5},
@@ -1023,33 +1023,37 @@ DEVICE_FINGERPRINTS = {
 
     "smart_light_bulb": {
         "category": "smart_light", "description": "Smart light bulb — WiFi/Zigbee connected LED",
-        "required": {"solidity_min": 0.7},
+        "required": {"solidity_min": 0.7, "aspect_ratio_min": 0.4, "aspect_ratio_max": 2.5},
         "positive": {
             "circularity": {"range": (0.5, 1.0), "weight": 3.0},
             "solidity": {"range": (0.75, 1.0), "weight": 2.5},
             "avg_brightness": {"range": (140, 255), "weight": 1.5},
             "complexity": {"range": (5, 22), "weight": 2.0},
+            "aspect_ratio": {"range": (0.6, 1.6), "weight": 2.0},
         },
         "negative": {
             "has_rotary_elements": {"equals": True, "penalty": 3.0},
             "has_linear_elements": {"equals": True, "penalty": 2.0},
             "convex_defects_count": {"above": 3, "penalty": 2.5},
+            "aspect_ratio": {"above": 2.5, "penalty": 4.0, "reason": "too elongated for a light bulb"},
         },
         "structural_hints": {"max_components": 2, "simple_boost": 2.0},
     },
 
     "smart_speaker": {
         "category": "smart_device", "description": "Smart speaker — voice-controlled home assistant",
-        "required": {"solidity_min": 0.8},
+        "required": {"solidity_min": 0.8, "aspect_ratio_max": 2.5},
         "positive": {
             "circularity": {"range": (0.5, 0.95), "weight": 2.0},
             "solidity": {"range": (0.85, 1.0), "weight": 2.0},
             "complexity": {"range": (5, 18), "weight": 2.0},
             "texture_homogeneity": {"range": (0.5, 1.0), "weight": 1.5},
+            "aspect_ratio": {"range": (0.6, 1.5), "weight": 1.5},
         },
         "negative": {
             "has_rotary_elements": {"equals": True, "penalty": 3.0},
             "convex_defects_count": {"above": 2, "penalty": 2.0},
+            "aspect_ratio": {"above": 2.5, "penalty": 4.0, "reason": "too elongated for a speaker"},
         },
         "structural_hints": {"max_components": 2, "simple_boost": 2.0},
     },

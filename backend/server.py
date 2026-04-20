@@ -32,6 +32,9 @@ from devices.drone import SimulatedDrone
 from devices.robot_arm import SimulatedRobotArm
 from devices.smart_light import SimulatedSmartLight
 
+# Import environment system
+from omnix.environments.registry import get_registry as get_env_registry
+
 
 class OmnixServer:
     def __init__(self, host="0.0.0.0", port=8765):
@@ -154,6 +157,82 @@ class OmnixServer:
         elif msg_type == "ping":
             await websocket.send(json.dumps({"type": "pong", "time": time.time()}))
 
+        # ─── Environment API (via WebSocket) ───
+
+        elif msg_type == "get_environments":
+            registry = get_env_registry()
+            await websocket.send(json.dumps({
+                "type": "environments_list",
+                "environments": registry.list_environments(),
+            }))
+
+        elif msg_type == "get_environment":
+            env_id = msg.get("environment_id")
+            registry = get_env_registry()
+            env = registry.get_environment(env_id)
+            if env:
+                await websocket.send(json.dumps({
+                    "type": "environment_data",
+                    "environment": env,
+                }))
+            else:
+                await websocket.send(json.dumps({
+                    "type": "error",
+                    "message": f"Environment not found: {env_id}",
+                }))
+
+        elif msg_type == "create_custom_environment":
+            registry = get_env_registry()
+            env = registry.create_custom(msg.get("data", {}))
+            await websocket.send(json.dumps({
+                "type": "environment_created",
+                "environment": env,
+            }))
+
+        elif msg_type == "update_custom_environment":
+            env_id = msg.get("environment_id")
+            registry = get_env_registry()
+            env = registry.update_custom(env_id, msg.get("updates", {}))
+            if env:
+                await websocket.send(json.dumps({
+                    "type": "environment_updated",
+                    "environment": env,
+                }))
+            else:
+                await websocket.send(json.dumps({
+                    "type": "error",
+                    "message": f"Custom environment not found: {env_id}",
+                }))
+
+        elif msg_type == "delete_custom_environment":
+            env_id = msg.get("environment_id")
+            registry = get_env_registry()
+            ok = registry.delete_custom(env_id)
+            await websocket.send(json.dumps({
+                "type": "environment_deleted" if ok else "error",
+                "environment_id": env_id,
+                "message": "" if ok else f"Not found: {env_id}",
+            }))
+
+        elif msg_type == "set_workspace_environment":
+            # Associate an environment with a workspace (broadcast to all)
+            workspace_id = msg.get("workspace_id")
+            env_id = msg.get("environment_id")
+            registry = get_env_registry()
+            env = registry.get_environment(env_id)
+            if env:
+                await self.broadcast({
+                    "type": "workspace_environment_set",
+                    "workspace_id": workspace_id,
+                    "environment_id": env_id,
+                    "environment": env,
+                })
+            else:
+                await websocket.send(json.dumps({
+                    "type": "error",
+                    "message": f"Environment not found: {env_id}",
+                }))
+
     async def telemetry_loop(self):
         """Periodically broadcast telemetry from all devices."""
         while True:
@@ -216,9 +295,27 @@ class OmnixServer:
         frontend_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend")
 
         async def process_request(path, request_headers):
-            """Serve static files for non-WebSocket requests."""
+            """Serve static files and REST API for non-WebSocket requests."""
             if path == "/ws":
                 return None  # Let WebSocket handler take over
+
+            # ─── REST API routes for environments ───
+            if path == "/api/environments":
+                registry = get_env_registry()
+                body = json.dumps({"environments": registry.list_environments()}).encode()
+                return (HTTPStatus.OK, [("Content-Type", "application/json"),
+                                         ("Access-Control-Allow-Origin", "*")], body)
+
+            if path.startswith("/api/environments/") and not path.endswith("/custom"):
+                env_id = path.split("/api/environments/")[1].strip("/")
+                registry = get_env_registry()
+                env = registry.get_environment(env_id)
+                if env:
+                    body = json.dumps({"environment": env}).encode()
+                    return (HTTPStatus.OK, [("Content-Type", "application/json"),
+                                             ("Access-Control-Allow-Origin", "*")], body)
+                return (HTTPStatus.NOT_FOUND, [("Content-Type", "application/json")],
+                        json.dumps({"error": f"Environment not found: {env_id}"}).encode())
 
             # Map paths to files
             if path == "/" or path == "":

@@ -85,17 +85,28 @@ def extract_angle(text: str, default: float = 90.0) -> float:
 
 
 def extract_coords(text: str) -> list[float] | None:
-    """Match (x, y) or (x, y, z)."""
+    """Match (x, y) or (x, y, z) — with parentheses, commas, or just spaces."""
+    # Try parenthesized first: (x, y, z)
     m = re.search(
         r"\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)"
         r"(?:\s*,\s*(-?\d+(?:\.\d+)?))?\s*\)", text)
-    if not m:
-        return None
-    xs = m.group(1, 2, 3)
-    out = [float(x) for x in xs if x is not None]
-    while len(out) < 3:
-        out.append(0.0)
-    return out
+    if m:
+        xs = m.group(1, 2, 3)
+        out = [float(x) for x in xs if x is not None]
+        while len(out) < 3:
+            out.append(0.0)
+        return out
+    # Try space-separated after "position" or "at": position 0.3 0 0.2
+    m2 = re.search(
+        r"(?:position|at|to|coords?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)"
+        r"(?:\s+(-?\d+(?:\.\d+)?))?", text, re.I)
+    if m2:
+        xs = m2.group(1, 2, 3)
+        out = [float(x) for x in xs if x is not None]
+        while len(out) < 3:
+            out.append(0.0)
+        return out
+    return None
 
 
 def extract_count(text: str, default: int = 1) -> int:
@@ -349,10 +360,26 @@ def _move_joint(m, text):
                        duration_s=1.0)]
 
 
-def _pick_at(m, text):
+def _move_to_position(m, text):
     coords = extract_coords(text)
     if not coords:
         return []
+    return [
+        ParsedStep("move_joint", {"joint_index": 0,
+                                  "angle_deg": math.degrees(math.atan2(coords[1], coords[0]))},
+                   description=f"Orient base toward ({coords[0]:.2f}, {coords[1]:.2f}, {coords[2]:.2f})",
+                   duration_s=1.0),
+        ParsedStep("move_joint", {"joint_index": 1,
+                                  "angle_deg": math.degrees(math.atan2(coords[2], math.sqrt(coords[0]**2 + coords[1]**2)))},
+                   description=f"Adjust shoulder to reach height {coords[2]:.2f}",
+                   duration_s=1.0),
+    ]
+
+
+def _pick_at(m, text):
+    coords = extract_coords(text)
+    if not coords:
+        coords = [0.3, 0.0, 0.1]  # Default pick position in front of arm
     return [
         ParsedStep("release", {},
                    description="Open gripper for approach",
@@ -551,6 +578,14 @@ INTENTS: list[Intent] = [
         applies_to=ARM_TYPES,
         keywords=["release", "open", "let", "drop"],
         help="release / open gripper",
+    ),
+    Intent(
+        name="move_to_position",
+        regex=re.compile(r"\b(?:move|go)\s+to\s+(?:position|point|coords?|location)\b", re.I),
+        handler=_move_to_position,
+        applies_to=ARM_TYPES,
+        keywords=["move", "position", "coords"],
+        help="move to position x y z",
     ),
     Intent(
         name="move_joint",
