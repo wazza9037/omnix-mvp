@@ -213,6 +213,24 @@ class PiAgent:
 
     # ── Registration ──
 
+    def ping(self) -> bool:
+        """Check if the OMNIX server is reachable before attempting registration."""
+        print(f"  Pinging {self.server_url}...")
+        result = self._get("/api/pi/ping")
+        if "error" in result:
+            print(f"  Ping FAILED: {result['error']}")
+            print()
+            print("  Troubleshooting:")
+            print(f"    1. Is the OMNIX server running on the target machine?")
+            print(f"    2. Can you reach {self.server_url} from this Pi?")
+            print(f"       Try: curl {self.server_url}/api/health")
+            print(f"    3. Check firewall — port {self.server_url.split(':')[-1]} must be open")
+            print(f"    4. Are both devices on the same network?")
+            return False
+        print(f"  Server OK! Version: {result.get('version', '?')}, "
+              f"agents connected: {result.get('connected_agents', 0)}")
+        return True
+
     def register(self) -> bool:
         """Register this device with the OMNIX server."""
         print(f"\n  Registering with {self.server_url}...")
@@ -236,7 +254,16 @@ class PiAgent:
         result = self._post("/api/pi/register", payload)
 
         if "error" in result:
-            print(f"  Registration FAILED: {result['error']}")
+            err = result['error']
+            print(f"  Registration FAILED: {err}")
+            if "401" in str(err) or "Unauthorized" in str(err):
+                print("  ERROR: Server requires authentication.")
+                print("  The Pi agent endpoints should be public. Check that your")
+                print("  OMNIX server version includes the Pi auth-bypass fix.")
+            elif "refused" in str(err).lower():
+                print(f"  ERROR: Connection refused at {self.server_url}")
+                print("  Is the OMNIX server running? Check with:")
+                print(f"    curl {self.server_url}/api/health")
             return False
 
         self.agent_id = result.get("agent_id")
@@ -319,8 +346,14 @@ class PiAgent:
     # ── Main Run Loop ──
 
     def run(self):
-        """Start the agent: register, then run telemetry + command loops."""
-        # Try to register, retry on failure
+        """Start the agent: ping server, register, then run telemetry + command loops."""
+        # Step 1: Verify connectivity
+        if not self.ping():
+            print("\n  Cannot reach OMNIX server. Exiting.")
+            print("  Fix the connection and try again.\n")
+            return
+
+        # Step 2: Register, retry on failure
         retries = 0
         while retries < 10:
             if self.register():

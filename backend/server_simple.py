@@ -501,9 +501,30 @@ class OmnixHandler(SimpleHTTPRequestHandler):
         # ── Existing Simulated Device Endpoints ──
 
         if parsed.path == "/api/devices":
-            self._json_response({
-                did: d.get_info() for did, d in devices.items()
-            })
+            # Merge simulated devices + live Pi agents into one response
+            result = {}
+            for did, d in devices.items():
+                result[did] = d.get_info()
+            for aid in list(pi_agents.keys()):
+                info = pi_agents[aid]
+                pi_did = info["device_id"]
+                tele = pi_telemetry.get(aid, {})
+                last_seen = tele.get("timestamp", 0)
+                online = (time.time() - last_seen) < 10 if last_seen else False
+                result[pi_did] = {
+                    "id": pi_did,
+                    "name": info["name"],
+                    "device_type": info.get("device_type", "ground_robot"),
+                    "capabilities": info.get("capabilities", []),
+                    "description": info.get("description", ""),
+                    "is_pi": True,
+                    "pi_agent_id": aid,
+                    "online": online,
+                    "telemetry": tele.get("telemetry", {}),
+                    "last_seen": last_seen,
+                    "hardware": info.get("hardware", {}),
+                }
+            self._json_response(result)
 
         elif parsed.path == "/api/telemetry":
             # Performance: support ?device_ids=id1,id2,... to fetch only specific devices
@@ -592,6 +613,17 @@ class OmnixHandler(SimpleHTTPRequestHandler):
                 self._json_response({"error": "Profile not found"}, 404)
 
         # ── Pi Agent Endpoints (GET) ──
+
+        elif parsed.path == "/api/pi/ping":
+            # Lightweight connectivity check — Pi agents call this before
+            # registering to verify the server is reachable and ready.
+            self._json_response({
+                "status": "ok",
+                "server": "omnix",
+                "version": "0.3.0",
+                "timestamp": time.time(),
+                "connected_agents": len(pi_agents),
+            })
 
         elif parsed.path == "/api/pi/agents":
             # List all connected Pi agents
@@ -1467,11 +1499,37 @@ class OmnixHandler(SimpleHTTPRequestHandler):
             device_id = data.get("device_id")
             command = data.get("command")
             params = data.get("params", {})
-            if device_id not in devices:
-                self._json_response({"error": f"Device not found: {device_id}"}, 404)
+
+            # Check simulated devices first
+            if device_id in devices:
+                result = devices[device_id].execute_command(command, params)
+                self._json_response(result)
                 return
-            result = devices[device_id].execute_command(command, params)
-            self._json_response(result)
+
+            # Check Pi agents — route command through the poll queue
+            pi_agent_id = None
+            for aid, info in pi_agents.items():
+                if info["device_id"] == device_id:
+                    pi_agent_id = aid
+                    break
+
+            if pi_agent_id:
+                cmd_id = str(uuid.uuid4())[:8]
+                pi_command_queues.setdefault(pi_agent_id, []).append({
+                    "id": cmd_id,
+                    "command": command,
+                    "params": params,
+                    "timestamp": time.time(),
+                })
+                self._json_response({
+                    "success": True,
+                    "queued": True,
+                    "command_id": cmd_id,
+                    "message": f"Command queued for Pi agent (poll-based delivery)",
+                })
+                return
+
+            self._json_response({"error": f"Device not found: {device_id}"}, 404)
 
         elif parsed.path == "/api/add_device":
             dtype = data.get("device_type", "smart_light")

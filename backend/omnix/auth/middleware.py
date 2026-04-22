@@ -38,13 +38,23 @@ PUBLIC_ROUTES = {
     "/api/auth/refresh",
     "/api/auth/guest",
     "/api/metrics",
+    "/api/pi/register",
+    "/api/pi/send-command",
+    "/api/pi/agents",
+    "/api/pi/ping",
+    "/api/esp32/register",
+    "/api/esp32/agents",
 }
 
 # Prefixes that are public (static files, etc.)
+# Includes Pi/ESP32 agent prefixes so hardware devices can reach
+# telemetry, command-poll, and deregister endpoints without a JWT.
 PUBLIC_PREFIXES = (
     "/static/",
     "/assets/",
     "/favicon",
+    "/api/pi/",
+    "/api/esp32/",
 )
 
 

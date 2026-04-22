@@ -74,18 +74,93 @@ Other pages to check out:
 
 ## Step 5: Connect a Raspberry Pi (Optional)
 
-If you have a Raspberry Pi on the same network:
+### 5a. Find your computer's IP address
 
-1. Copy `backend/devices/pi_agent.py` to your Pi
-2. On the Pi, run:
+The Pi needs to reach the OMNIX server over the network. Find your IP:
+
+- **Linux/Mac:** `hostname -I` (first address, e.g. `192.168.1.42`)
+- **Windows:** `ipconfig` → look for "IPv4 Address" under your active adapter
+- **Quick check:** `python3 -c "import socket; print(socket.gethostbyname(socket.gethostname()))"`
+
+### 5b. Copy the required files to your Pi
+
+The Pi needs three files from the `backend/devices/` folder. Copy the whole folder or just these:
 
 ```bash
-python3 pi_agent.py --server http://YOUR_COMPUTER_IP:8765
+# From your computer (adjust paths):
+scp -r backend/devices/ pi@YOUR_PI_IP:~/omnix-agent/
 ```
 
-Replace `YOUR_COMPUTER_IP` with your computer's local IP address (like `192.168.1.42`). You can find it with `hostname -I` on Linux/Mac or `ipconfig` on Windows.
+Or on the Pi: `git clone` the full repo, then `cd omnix/backend`.
 
-3. Your Pi should appear in the OMNIX dashboard automatically!
+### 5c. Install Pi dependencies (optional, for real GPIO)
+
+```bash
+# On the Pi:
+pip3 install RPi.GPIO          # for real GPIO control
+pip3 install picamera2          # for Pi Camera Module
+pip3 install adafruit-circuitpython-dht  # for DHT temp sensors
+```
+
+If you skip these, the agent runs in **simulated mode** (useful for testing the connection first).
+
+### 5d. Test the connection
+
+Before running the full agent, verify the server is reachable:
+
+```bash
+# On the Pi, test connectivity:
+curl http://YOUR_COMPUTER_IP:8765/api/pi/ping
+```
+
+You should see: `{"status": "ok", "server": "omnix", ...}`
+
+If you get "Connection refused": check that the server is running, both devices are on the same WiFi, and your firewall allows port 8765.
+
+### 5e. Run the Pi agent
+
+```bash
+# On the Pi:
+cd omnix-agent   # or wherever you put the files
+python3 devices/pi_agent.py --server http://YOUR_COMPUTER_IP:8765 --profile rover
+```
+
+Available profiles: `rover` (2-motor drive), `arm` (robotic arm), `sentinel` (pan/tilt camera).
+
+You should see:
+```
+  Pinging http://YOUR_COMPUTER_IP:8765...
+  Server OK! Version: 0.3.0, agents connected: 0
+  Registering...
+  Registered! Agent ID: a1b2c3d4, Device ID: pi-a1b2c3d4
+  Agent running! Sending telemetry every 1.0s
+```
+
+### 5f. Verify in the dashboard
+
+Open **http://localhost:8765** and your Pi device should appear in the device list with a green "online" indicator. You can now send commands from the dashboard and they'll be executed on the Pi.
+
+### 5g. Test without a Pi (simulation)
+
+You can validate the entire pipeline without any hardware:
+
+```bash
+# On the same machine as the server:
+cd backend
+python3 test_pi_connection.py
+```
+
+This runs 12 automated tests covering registration, telemetry, commands, and cleanup.
+
+### Pi troubleshooting
+
+**"Ping FAILED: Connection refused"** — The server isn't reachable from the Pi. Check: (1) Is `server_simple.py` running? (2) Are both devices on the same network? (3) Is port 8765 open in your firewall? On Linux: `sudo ufw allow 8765`. On Windows: add an inbound rule for port 8765 in Windows Firewall.
+
+**"Registration FAILED: 401 Unauthorized"** — Your server version is outdated. The Pi agent endpoints must be in the public route list. Pull the latest code and restart the server.
+
+**Agent connects but nothing appears in dashboard** — Refresh the dashboard page. The Pi device should appear in the device list within a few seconds of registration.
+
+**Telemetry shows "simulated"** — This is normal if you haven't installed `RPi.GPIO`. The connection is working — install the GPIO libraries for real sensor data.
 
 ---
 
@@ -121,7 +196,7 @@ cd backend && python3 server_simple.py
 ```
 
 **Pi agent can't connect**
-Make sure both devices are on the same WiFi network. Check that your computer's firewall allows connections on port 8765.
+See the detailed Pi troubleshooting section in Step 5 above. Quick checklist: (1) both on same network, (2) firewall allows port 8765, (3) test with `curl http://YOUR_IP:8765/api/pi/ping` from the Pi, (4) run `python3 test_pi_connection.py` on the server machine to validate the pipeline.
 
 **Arduino not showing up**
 Make sure you have the right serial port selected and the Arduino IDE isn't holding the port open.
