@@ -2725,6 +2725,9 @@ const canvas = document.getElementById('canvas3d');
 let scene, camera, renderer;
 let deviceMesh = null, pathLine = null, pathPoints = [];
 let animating = false, animProgress = 0;
+// Smooth interpolation targets for telemetry-driven 3D updates
+let _meshTargetPos = null;   // {x, y, z} from telemetry
+let _meshTargetRotY = null;  // yaw in radians from telemetry
 
 function initThree() {
   scene = new THREE.Scene();
@@ -2849,12 +2852,46 @@ function animate() {
   // Skip rendering if page is hidden (performance optimization)
   if (document.hidden) return;
 
-  // Gentle idle rotation if nothing is animating
-  if (!animating && deviceMesh && !isDragging && !EnvSystem.isEditorActive()) {
+  // ── Telemetry-driven 3D position updates ──
+  // Read the selected device's telemetry and set interpolation targets
+  if (deviceMesh && selected && selected.kind === 'sim') {
+    const dev = simDevices[selected.id];
+    const tele = dev && dev.telemetry;
+    if (tele && tele.position) {
+      // Map device coords (x,y,z) → Three.js (x = device.x, y = device.z, z = -device.y)
+      _meshTargetPos = {
+        x: tele.position.x,
+        y: tele.position.z,
+        z: -tele.position.y
+      };
+    }
+    if (tele && tele.rotation && typeof tele.rotation.yaw === 'number') {
+      _meshTargetRotY = -tele.rotation.yaw * Math.PI / 180;
+    }
+  }
+
+  // Smooth interpolation toward telemetry target (lerp factor 0.1 = ~10 frames to settle)
+  const hasTarget = _meshTargetPos && deviceMesh && !animating;
+  if (hasTarget) {
+    const lf = 0.1; // lerp factor — higher = snappier
+    deviceMesh.position.x += (_meshTargetPos.x - deviceMesh.position.x) * lf;
+    deviceMesh.position.y += (_meshTargetPos.y - deviceMesh.position.y) * lf;
+    deviceMesh.position.z += (_meshTargetPos.z - deviceMesh.position.z) * lf;
+    if (_meshTargetRotY !== null) {
+      // Shortest-path angle interpolation
+      let diff = _meshTargetRotY - deviceMesh.rotation.y;
+      while (diff > Math.PI)  diff -= 2 * Math.PI;
+      while (diff < -Math.PI) diff += 2 * Math.PI;
+      deviceMesh.rotation.y += diff * lf;
+    }
+  }
+
+  // Gentle idle rotation only when NO telemetry target is driving the mesh
+  if (!animating && !hasTarget && deviceMesh && !isDragging && !EnvSystem.isEditorActive()) {
     deviceMesh.rotation.y += 0.002;
   }
 
-  // Movement animation along path
+  // Movement animation along path (preset movement previews)
   if (animating && pathData && pathData.points && pathData.points.length > 1) {
     animProgress += 0.004;
     if (animProgress >= 1) { animProgress = 1; animating = false; }
@@ -4106,6 +4143,9 @@ function showDeviceInViewer() {
   clearMesh();
   hideTimeline();
   hideViewerEmpty();
+  // Reset interpolation targets on device switch
+  _meshTargetPos = null;
+  _meshTargetRotY = null;
 
   if (!selected) { showViewerEmpty(); return; }
 
@@ -4117,7 +4157,16 @@ function showDeviceInViewer() {
     mesh = buildSimMesh(d.device_type);
     title = d.name;
     sub = (DEVICE_LABELS[d.device_type] || d.device_type) + ' · simulated';
-    mesh.position.y = d.device_type === 'smart_light' ? 0 : 0.1;
+    // Place mesh at current telemetry position (if available), else default
+    const tele = d.telemetry;
+    if (tele && tele.position) {
+      mesh.position.set(tele.position.x, tele.position.z, -tele.position.y);
+    } else {
+      mesh.position.y = d.device_type === 'smart_light' ? 0 : 0.1;
+    }
+    if (tele && tele.rotation && typeof tele.rotation.yaw === 'number') {
+      mesh.rotation.y = -tele.rotation.yaw * Math.PI / 180;
+    }
   } else {
     const p = vpeProfiles.find(x => x.id === selected.id);
     if (!p) { showViewerEmpty(); return; }
